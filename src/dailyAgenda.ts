@@ -178,21 +178,36 @@ const formatter = new Intl.DateTimeFormat("ja-JP", {
  */
 function formatEvent(e: calendar_v3.Schema$Event): string {
   const title = e.summary ?? "無題";
+  let details = "";
+  if (e.location) details += ` (場所: ${e.location})`;
+  if (e.description) {
+    const comment = e.description.length > 100 ? e.description.substring(0, 100) + "..." : e.description;
+    details += ` (コメント: ${comment})`;
+  }
+  const fullTitle = title + details;
+
   if (e.start?.date) {
-    return `・終日: ${title}`;
+    return `・終日: ${fullTitle}`;
   }
   if (e.start?.dateTime) {
     const t = formatter.format(new Date(e.start.dateTime));
-    return `・${t}: ${title}`;
+    return `・${t}: ${fullTitle}`;
   }
-  return `・${title}`;
+  return `・${fullTitle}`;
 }
 
 /**
  * 誕生日表示。
  */
 function formatBirthday(e: calendar_v3.Schema$Event): string {
-  return `・🎂 ${e.summary ?? "誕生日"} おめでとうございます`;
+  const title = e.summary ?? "誕生日";
+  let details = "";
+  if (e.location) details += ` (場所: ${e.location})`;
+  if (e.description) {
+    const comment = e.description.length > 100 ? e.description.substring(0, 100) + "..." : e.description;
+    details += ` (コメント: ${comment})`;
+  }
+  return `・🎂 ${title}${details} おめでとうございます`;
 }
 
 /**
@@ -252,7 +267,7 @@ function buildMessage(
   const normals: string[] = [];
 
   for (const event of events) {
-    if (event.eventType === "birthday") {
+    if (event.summary?.includes("誕生日")) {
       birthdays.push(formatBirthday(event));
     } else {
       normals.push(formatEvent(event));
