@@ -1,0 +1,17 @@
+{
+  "name": "sakuragi-bot",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/dailyAgenda.js"
+  },
+  "dependencies": {
+    "googleapis": "^150.0.0",
+    "winston": "^3.10.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "typescript": "^5.8.3"
+  }
+}

@@ -1,0 +1,35 @@
+name: Daily Agenda
+
+on:
+  schedule:
+    - cron: "5 7 * * *"
+      timezone: "Asia/Tokyo"
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - run: npm ci
+      - run: npm run build
+
+      - run: npm start
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          GOOGLE_CALENDAR_ID: ${{ secrets.GOOGLE_CALENDAR_ID }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+      - name: Notify Discord on failure
+        if: failure()
+        run: |
+          payload='{"content":"[Daily Agenda] 実行に失敗しました。GitHub Actionsログを確認してください。"}'
+          curl -H "Content-Type: application/json" -X POST -d "$payload" "$DISCORD_WEBHOOK_URL"
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.FAILURE_DISCORD_WEBHOOK_URL }}

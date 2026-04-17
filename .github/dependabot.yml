@@ -1,0 +1,21 @@
+version: 2
+updates:
+  # 1. GitHub Actions 自体の更新チェック (v4 -> v5 など)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly" # 毎週チェック
+    labels:
+      - "dependencies"
+      - "github-actions"
+
+  # 2. npm ライブラリの更新チェック (rss-parser, node-fetch など)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "npm"
+    # セキュリティアップデートだけでなく、通常のバージョンアップも対象にする
+    open-pull-requests-limit: 5
