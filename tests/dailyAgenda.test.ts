@@ -1,3 +1,6 @@
+import fs from "fs";
+import os from "os";
+import path from "path";
 import { describe, expect, it, vi } from "vitest";
 import type { CalendarClient } from "../src/calendar.js";
 import type { AppLogger } from "../src/dependencies.js";
@@ -113,9 +116,11 @@ describe("runDailyAgenda", () => {
   it("既定の config 読み込みで config.json が壊れていても環境変数だけで実行できる", async () => {
     const logger = createLogger();
     const originalCwd = process.cwd();
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "sakuragi-bot-broken-config-"));
+    fs.writeFileSync(path.join(tempDir, "config.json"), "{", "utf-8");
 
     try {
-      process.chdir("tests/fixtures/broken-config");
+      process.chdir(tempDir);
 
       await runDailyAgenda({
         env: {
@@ -142,6 +147,7 @@ describe("runDailyAgenda", () => {
       });
     } finally {
       process.chdir(originalCwd);
+      fs.rmSync(tempDir, { recursive: true, force: true });
     }
 
     expect(logger.warn).toHaveBeenCalledWith(
