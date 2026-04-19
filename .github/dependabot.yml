@@ -1,15 +1,15 @@
 version: 2
 updates:
-  # 1. GitHub Actions 自体の更新チェック (v4 -> v5 など)
+  # GitHub Actions の checkout/setup-node などを定期更新する。
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly" # 毎週チェック
+      interval: "weekly"
     labels:
       - "dependencies"
       - "github-actions"
 
-  # 2. npm ライブラリの更新チェック (rss-parser, node-fetch など)
+  # TypeScript、Vitest、Google APIs、Winston などの npm 依存を定期更新する。
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
@@ -17,5 +17,4 @@ updates:
     labels:
       - "dependencies"
       - "npm"
-    # セキュリティアップデートだけでなく、通常のバージョンアップも対象にする
     open-pull-requests-limit: 5
