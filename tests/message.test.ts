@@ -25,7 +25,7 @@ describe("formatEvent", () => {
       title: "チーム休暇",
       startDate: "2026-04-19",
       isBirthday: false
-    })).toBe("・終日: チーム休暇");
+    })).toBe("・📅 チーム休暇");
   });
 
   it("時刻付きイベントに場所と 100 文字で省略したコメントを含める", () => {
@@ -38,8 +38,8 @@ describe("formatEvent", () => {
       isBirthday: false
     });
 
-    expect(line).toContain("朝会 (場所: 会議室A)");
-    expect(line).toContain(`(コメント: ${"あ".repeat(100)}...)`);
+    expect(line).toContain("朝会 (📍: 会議室A)");
+    expect(line).toContain(`(💬: ${"あ".repeat(100)}...)`);
     expect(line).toMatch(/09:30/);
   });
 
@@ -54,7 +54,7 @@ describe("formatBirthday", () => {
       title: "佐倉さん 誕生日",
       location: "Slack",
       isBirthday: true
-    })).toBe("・🎂 佐倉さん 誕生日 (場所: Slack) おめでとうございます");
+    })).toBe("・🎂 佐倉さん 誕生日 (📍: Slack) おめでとうございます");
   });
 });
 
