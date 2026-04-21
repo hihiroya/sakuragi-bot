@@ -95,6 +95,20 @@ npm run test:coverage
 
 `npm start` は `dist/cli.js` を起動します。事前に `npm run build` で `dist` を生成してください。
 
+任意の日付で確認する場合は `--date YYYY-MM-DD` を指定できます。日付は JST の 00:00-24:00 として扱います。
+
+```bash
+npm start -- --date 2026-04-22
+```
+
+Discord へ投稿せず、取得した予定から生成される本文だけをログで確認する場合は `--dry-run` を指定します。
+
+```bash
+npm start -- --dry-run --date 2026-04-22
+```
+
+予定がない日かつ `postWhenNoEvents` が `false` の場合、`--dry-run` でも本文生成は行わずスキップログだけを出します。予定なし本文も確認したい場合は `POST_WHEN_NO_EVENTS=true` を併用してください。
+
 ## ソース構成
 
 | ファイル | 役割 |
@@ -144,3 +158,12 @@ npm run coverage:summary
 ```
 
 `.github/workflows/daily-agenda.yml` は毎日 JST 7:05 に同じ検証を通した後、Discord へ当日予定を投稿します。Coverage の結果は GitHub Actions の job summary に Markdown 表として表示されます。
+
+手動実行する場合は GitHub Actions の `Run workflow` から以下を指定できます。
+
+| 入力 | 説明 |
+| --- | --- |
+| `date` | 取得対象日。未指定の場合は実行日の JST 当日。形式は `YYYY-MM-DD`。 |
+| `dry_run` | Discord へ投稿せず、生成本文をログで確認します。手動実行時の既定値は `true` です。 |
+
+手動実行で実際に Discord へ投稿したい場合は、`dry_run` を `false` にしてください。

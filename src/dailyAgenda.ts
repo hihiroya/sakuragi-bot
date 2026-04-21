@@ -11,7 +11,7 @@ import type { DailyAgendaDependencies } from "./dependencies.js";
 import type { AgendaEvent } from "./domain.js";
 import { logGoogleApiError } from "./errors.js";
 import { logger } from "./logger.js";
-import { buildMessage, getTodayRange } from "./message.js";
+import { buildMessage, getDateRange, getTodayRange } from "./message.js";
 import { loadMessageTemplate } from "./messageTemplate.js";
 
 /**
@@ -20,6 +20,8 @@ import { loadMessageTemplate } from "./messageTemplate.js";
 export async function runDailyAgenda({
   env = process.env,
   logger: appLogger = logger,
+  dryRun = false,
+  date,
   loadConfigFn = () => loadConfig(undefined, undefined, error => {
     // config.json が壊れていても、環境変数だけで運用できる構成を維持するため警告に留める。
     appLogger.warn("config.json の読み込みに失敗しました。", { error });
@@ -31,7 +33,7 @@ export async function runDailyAgenda({
     webhookUrl: config.discordWebhookUrl,
     logger
   }),
-  getTodayRangeFn = getTodayRange,
+  getTodayRangeFn = targetDate => targetDate ? getDateRange(targetDate) : getTodayRange(),
   loadMessageTemplateFn = templatePath => loadMessageTemplate(templatePath, undefined, error => {
     appLogger.warn("投稿テンプレートの読み込みに失敗しました。既定文言を使用します。", { error });
   }),
@@ -42,7 +44,7 @@ export async function runDailyAgenda({
   const runtimeConfig = resolveRuntimeConfigFn(source);
 
   const calendar = createCalendarClient(runtimeConfig.googleServiceAccount);
-  const { timeMin, timeMax, label } = getTodayRangeFn();
+  const { timeMin, timeMax, label } = getTodayRangeFn(date);
 
   let events: AgendaEvent[] = [];
 
@@ -60,10 +62,21 @@ export async function runDailyAgenda({
   }
 
   const messageTemplate = loadMessageTemplateFn(runtimeConfig.messageTemplatePath);
+  const msg = buildMessageFn(events, label, messageTemplate);
+
+  if (dryRun) {
+    appLogger.info("Dry run: Discord 投稿をスキップしました。", {
+      label,
+      events: events.length,
+      length: msg.length,
+      content: msg
+    });
+    return;
+  }
+
   const discordClient = createDiscordClientFn({
     discordWebhookUrl: runtimeConfig.discordWebhookUrl
   }, appLogger);
-  const msg = buildMessageFn(events, label, messageTemplate);
   await discordClient.post(msg);
   appLogger.info(`Posted: ${label} (${events.length} events)`);
 }

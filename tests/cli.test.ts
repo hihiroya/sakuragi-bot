@@ -7,7 +7,7 @@ vi.mock("../src/dailyAgenda.js", () => ({
   runDailyAgenda
 }));
 
-const { isDirectExecution, main } = await import("../src/cli.js");
+const { isDirectExecution, main, parseCliOptions } = await import("../src/cli.js");
 
 beforeEach(() => {
   runDailyAgenda.mockClear();
@@ -17,7 +17,44 @@ describe("main", () => {
   it("daily agenda の実行を委譲する", async () => {
     await main();
 
-    expect(runDailyAgenda).toHaveBeenCalledOnce();
+    expect(runDailyAgenda).toHaveBeenCalledWith({
+      dryRun: false
+    });
+  });
+
+  it("CLI オプションを daily agenda へ渡す", async () => {
+    await main(["node", "dist/cli.js", "--dry-run", "--date", "2026-04-22"]);
+
+    expect(runDailyAgenda).toHaveBeenCalledWith({
+      dryRun: true,
+      date: "2026-04-22"
+    });
+  });
+});
+
+describe("parseCliOptions", () => {
+  it("--dry-run と --date を解析する", () => {
+    expect(parseCliOptions(["--dry-run", "--date", "2026-04-22"])).toEqual({
+      dryRun: true,
+      date: "2026-04-22"
+    });
+  });
+
+  it("--date=YYYY-MM-DD 形式も解析する", () => {
+    expect(parseCliOptions(["--date=2026-04-22"])).toEqual({
+      dryRun: false,
+      date: "2026-04-22"
+    });
+  });
+
+  it("--date の値がない場合はエラーを投げる", () => {
+    expect(() => parseCliOptions(["--date"]))
+      .toThrow("--date は YYYY-MM-DD 形式の日付を指定してください。");
+  });
+
+  it("未知のオプションはエラーを投げる", () => {
+    expect(() => parseCliOptions(["--unknown"]))
+      .toThrow("未知のオプションです: --unknown");
   });
 });
 

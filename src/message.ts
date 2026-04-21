@@ -12,16 +12,7 @@ export const MAX_DISCORD_CONTENT = 2000;
  * JST における今日の開始・終了時刻を返す。
  */
 export function getTodayRange(now = new Date()): TodayRange {
-  const fmt = new Intl.DateTimeFormat("en-CA", {
-    timeZone: TZ,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  });
-  const parts = fmt.formatToParts(now);
-  const y = parts.find(p => p.type === "year")!.value;
-  const m = parts.find(p => p.type === "month")!.value;
-  const d = parts.find(p => p.type === "day")!.value;
+  const { y, m, d } = getJstDateParts(now);
   const start = new Date(`${y}-${m}-${d}T00:00:00+09:00`);
   const end = new Date(start);
   end.setDate(end.getDate() + 1);
@@ -29,6 +20,34 @@ export function getTodayRange(now = new Date()): TodayRange {
     timeMin: start.toISOString(),
     timeMax: end.toISOString(),
     label: `${y}-${m}-${d}`
+  };
+}
+
+/**
+ * JST における指定日の開始・終了時刻を返す。
+ */
+export function getDateRange(dateLabel: string): TodayRange {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateLabel)) {
+    throw new Error("--date は YYYY-MM-DD 形式で指定してください。");
+  }
+
+  const start = new Date(`${dateLabel}T00:00:00+09:00`);
+  if (Number.isNaN(start.getTime())) {
+    throw new Error("--date に有効な日付を指定してください。");
+  }
+
+  const { y, m, d } = getJstDateParts(start);
+  const verified = `${y}-${m}-${d}`;
+  if (verified !== dateLabel) {
+    throw new Error("--date に有効な日付を指定してください。");
+  }
+
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  return {
+    timeMin: start.toISOString(),
+    timeMax: end.toISOString(),
+    label: dateLabel
   };
 }
 
@@ -41,6 +60,21 @@ const formatter = new Intl.DateTimeFormat("ja-JP", {
   minute: "2-digit",
   hour12: false
 });
+
+function getJstDateParts(date: Date) {
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  });
+  const parts = fmt.formatToParts(date);
+  return {
+    y: parts.find(p => p.type === "year")!.value,
+    m: parts.find(p => p.type === "month")!.value,
+    d: parts.find(p => p.type === "day")!.value
+  };
+}
 
 /**
  * 通常予定を Discord 投稿用の 1 行へ整形する。

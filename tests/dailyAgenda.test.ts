@@ -202,6 +202,93 @@ describe("runDailyAgenda", () => {
     expect(logger.info).toHaveBeenCalledWith("Posted: 2026-04-19 (0 events)");
   });
 
+  it("date オプションで指定日の予定範囲を取得する", async () => {
+    const logger = createLogger();
+    const calendar: CalendarClient = {
+      events: {
+        list: vi.fn(async () => ({ data: { items: [] } }))
+      }
+    };
+    const listEventsFn = vi.fn(async () => [
+      { title: "指定日の予定", isBirthday: false }
+    ]);
+    const discordClient = { post: vi.fn(async () => undefined) };
+
+    await runDailyAgenda({
+      env: {
+        GOOGLE_SERVICE_ACCOUNT_JSON: JSON.stringify({
+          client_email: "bot@example.com",
+          private_key: "secret"
+        }),
+        GOOGLE_CALENDAR_ID: "calendar-id",
+        DISCORD_WEBHOOK_URL: "https://discord.com/api/webhooks/test"
+      },
+      logger,
+      date: "2026-04-22",
+      loadConfigFn: () => ({}),
+      createCalendarClient: () => calendar,
+      listEventsFn,
+      createDiscordClientFn: () => discordClient,
+      loadMessageTemplateFn: () => DEFAULT_MESSAGE_TEMPLATE
+    });
+
+    expect(listEventsFn).toHaveBeenCalledWith(calendar, "calendar-id", {
+      timeMin: "2026-04-21T15:00:00.000Z",
+      timeMax: "2026-04-22T15:00:00.000Z",
+      label: "2026-04-22"
+    });
+    expect(discordClient.post).toHaveBeenCalledOnce();
+  });
+
+  it("dryRun の場合は本文生成まで行い Discord 投稿をスキップする", async () => {
+    const logger = createLogger();
+    const calendar: CalendarClient = {
+      events: {
+        list: vi.fn(async () => ({ data: { items: [] } }))
+      }
+    };
+    const createDiscordClientFn = vi.fn(() => ({ post: vi.fn(async () => undefined) }));
+    const buildMessageFn = vi.fn(() => "投稿予定本文");
+
+    await runDailyAgenda({
+      env: {
+        GOOGLE_SERVICE_ACCOUNT_JSON: JSON.stringify({
+          client_email: "bot@example.com",
+          private_key: "secret"
+        }),
+        GOOGLE_CALENDAR_ID: "calendar-id",
+        DISCORD_WEBHOOK_URL: "https://discord.com/api/webhooks/test"
+      },
+      logger,
+      dryRun: true,
+      loadConfigFn: () => ({}),
+      createCalendarClient: () => calendar,
+      listEventsFn: vi.fn(async () => [
+        { title: "朝会", isBirthday: false }
+      ]),
+      createDiscordClientFn,
+      getTodayRangeFn: () => ({
+        label: "2026-04-19",
+        timeMin: "2026-04-18T15:00:00.000Z",
+        timeMax: "2026-04-19T15:00:00.000Z"
+      }),
+      loadMessageTemplateFn: () => DEFAULT_MESSAGE_TEMPLATE,
+      buildMessageFn
+    });
+
+    expect(buildMessageFn).toHaveBeenCalledOnce();
+    expect(createDiscordClientFn).not.toHaveBeenCalled();
+    expect(logger.info).toHaveBeenCalledWith(
+      "Dry run: Discord 投稿をスキップしました。",
+      {
+        label: "2026-04-19",
+        events: 1,
+        length: "投稿予定本文".length,
+        content: "投稿予定本文"
+      }
+    );
+  });
+
   it("既定の config 読み込みで config.json が壊れていても環境変数だけで実行できる", async () => {
     const logger = createLogger();
     const originalCwd = process.cwd();

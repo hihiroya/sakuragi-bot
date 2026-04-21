@@ -3,6 +3,7 @@ import {
   buildMessage,
   formatBirthday,
   formatEvent,
+  getDateRange,
   getTodayRange,
   MAX_DISCORD_CONTENT
 } from "../src/message.js";
@@ -17,6 +18,26 @@ describe("getTodayRange", () => {
       timeMax: "2026-04-19T15:00:00.000Z",
       label: "2026-04-19"
     });
+  });
+});
+
+describe("getDateRange", () => {
+  it("JST の指定日範囲を返す", () => {
+    expect(getDateRange("2026-04-22")).toEqual({
+      timeMin: "2026-04-21T15:00:00.000Z",
+      timeMax: "2026-04-22T15:00:00.000Z",
+      label: "2026-04-22"
+    });
+  });
+
+  it("YYYY-MM-DD ではない日付指定はエラーを投げる", () => {
+    expect(() => getDateRange("2026/04/22"))
+      .toThrow("--date は YYYY-MM-DD 形式で指定してください。");
+  });
+
+  it("存在しない日付はエラーを投げる", () => {
+    expect(() => getDateRange("2026-02-30"))
+      .toThrow("--date に有効な日付を指定してください。");
   });
 });
 

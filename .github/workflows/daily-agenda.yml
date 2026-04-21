@@ -5,6 +5,16 @@ on:
     # GitHub Actions の cron は UTC。22:05 UTC は JST 7:05。
     - cron: "5 22 * * *"
   workflow_dispatch:
+    inputs:
+      date:
+        description: "取得対象日。未指定の場合は実行日の JST 当日。形式: YYYY-MM-DD"
+        required: false
+        type: string
+      dry_run:
+        description: "Discord へ投稿せず、生成本文をログで確認する"
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -33,7 +43,20 @@ jobs:
         if: always()
         run: npm run coverage:summary
 
-      - run: npm start
+      - name: Run daily agenda
+        shell: bash
+        run: |
+          args=()
+
+          if [ -n "${{ github.event.inputs.date }}" ]; then
+            args+=(--date "${{ github.event.inputs.date }}")
+          fi
+
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            args+=(--dry-run)
+          fi
+
+          npm start -- "${args[@]}"
         env:
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           GOOGLE_CALENDAR_ID: ${{ secrets.GOOGLE_CALENDAR_ID }}

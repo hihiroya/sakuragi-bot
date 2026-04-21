@@ -18,6 +18,8 @@ export type AppLogger = PostLogger & {
 export type DailyAgendaDependencies = {
   env?: NodeJS.ProcessEnv;
   logger?: AppLogger;
+  dryRun?: boolean;
+  date?: string;
   loadConfigFn?: () => AppConfig;
   resolveRuntimeConfigFn?: (source: { env?: NodeJS.ProcessEnv; config?: AppConfig }) => RuntimeConfig;
   createCalendarClient?: (credentials: RuntimeConfig["googleServiceAccount"]) => CalendarClient;
@@ -26,7 +28,7 @@ export type DailyAgendaDependencies = {
     config: Pick<RuntimeConfig, "discordWebhookUrl">,
     logger: PostLogger
   ) => DiscordClient;
-  getTodayRangeFn?: () => TodayRange;
+  getTodayRangeFn?: (date?: string) => TodayRange;
   loadMessageTemplateFn?: (templatePath?: string) => MessageTemplate;
   buildMessageFn?: typeof buildMessage;
 };

@@ -2,8 +2,51 @@ import { pathToFileURL } from "url";
 import { runDailyAgenda } from "./dailyAgenda.js";
 import { logger } from "./logger.js";
 
-export async function main() {
-  await runDailyAgenda();
+export type CliOptions = {
+  dryRun: boolean;
+  date?: string;
+};
+
+export async function main(argv = process.argv) {
+  await runDailyAgenda(parseCliOptions(argv.slice(2)));
+}
+
+export function parseCliOptions(args: string[]): CliOptions {
+  const options: CliOptions = {
+    dryRun: false
+  };
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+
+    if (arg === "--dry-run") {
+      options.dryRun = true;
+      continue;
+    }
+
+    if (arg === "--date") {
+      const value = args[index + 1];
+      if (!value || value.startsWith("--")) {
+        throw new Error("--date は YYYY-MM-DD 形式の日付を指定してください。");
+      }
+      options.date = value;
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--date=")) {
+      const value = arg.slice("--date=".length);
+      if (!value) {
+        throw new Error("--date は YYYY-MM-DD 形式の日付を指定してください。");
+      }
+      options.date = value;
+      continue;
+    }
+
+    throw new Error(`未知のオプションです: ${arg}`);
+  }
+
+  return options;
 }
 
 export function isDirectExecution(importMetaUrl: string, argv = process.argv): boolean {
