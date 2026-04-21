@@ -279,13 +279,14 @@ describe("runDailyAgenda", () => {
     expect(buildMessageFn).toHaveBeenCalledOnce();
     expect(createDiscordClientFn).not.toHaveBeenCalled();
     expect(logger.info).toHaveBeenCalledWith(
-      "Dry run: Discord 投稿をスキップしました。",
-      {
-        label: "2026-04-19",
-        events: 1,
-        length: "投稿予定本文".length,
-        content: "投稿予定本文"
-      }
+      [
+        "Dry run: Discord 投稿をスキップしました。",
+        "Date: 2026-04-19",
+        "Events: 1",
+        `Length: ${"投稿予定本文".length}`,
+        "",
+        "投稿予定本文"
+      ].join("\n")
     );
   });
 

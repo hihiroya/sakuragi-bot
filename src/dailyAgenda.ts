@@ -65,12 +65,14 @@ export async function runDailyAgenda({
   const msg = buildMessageFn(events, label, messageTemplate);
 
   if (dryRun) {
-    appLogger.info("Dry run: Discord 投稿をスキップしました。", {
-      label,
-      events: events.length,
-      length: msg.length,
-      content: msg
-    });
+    appLogger.info([
+      "Dry run: Discord 投稿をスキップしました。",
+      `Date: ${label}`,
+      `Events: ${events.length}`,
+      `Length: ${msg.length}`,
+      "",
+      msg
+    ].join("\n"));
     return;
   }
 
