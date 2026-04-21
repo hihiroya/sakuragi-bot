@@ -11,7 +11,7 @@
     "start": "node dist/cli.js"
   },
   "dependencies": {
-    "googleapis": "^150.0.0",
+    "googleapis": "^171.4.0",
     "winston": "^3.10.0"
   },
   "devDependencies": {
