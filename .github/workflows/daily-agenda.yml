@@ -36,12 +36,6 @@ jobs:
 
       - run: npm ci
       - run: npm run build
-      - run: npm test
-      - run: npm run test:coverage
-
-      - name: Add coverage summary
-        if: always()
-        run: npm run coverage:summary
 
       - name: Run daily agenda
         shell: bash

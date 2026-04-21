@@ -4,6 +4,8 @@ import {
   createGoogleCalendarClient,
   listAgendaEvents,
   listGoogleCalendarEvents,
+  normalizeCalendarDescription,
+  normalizeGoogleRedirectLinks,
   toAgendaEvent
 } from "../src/calendar.js";
 
@@ -53,7 +55,7 @@ describe("listAgendaEvents", () => {
               {
                 summary: "花道 誕生日",
                 location: "体育館",
-                description: "祝う",
+                description: "<b>祝う</b>",
                 start: { date: "2026-04-19" }
               }
             ]
@@ -75,6 +77,38 @@ describe("listAgendaEvents", () => {
         isBirthday: true
       }
     ]);
+  });
+});
+
+describe("normalizeGoogleRedirectLinks", () => {
+  it("Google redirect URL から q パラメータの元 URL を取り出す", () => {
+    expect(normalizeGoogleRedirectLinks(
+      "詳細 https://www.google.com/url?q=https://www.animatecafe.jp/event/ac000755&sa=D&source=calendar"
+    )).toBe("詳細 https://www.animatecafe.jp/event/ac000755");
+  });
+
+  it("q パラメータがない Google URL はそのまま残す", () => {
+    expect(normalizeGoogleRedirectLinks("https://www.google.com/url?sa=D"))
+      .toBe("https://www.google.com/url?sa=D");
+  });
+});
+
+describe("normalizeCalendarDescription", () => {
+  it("HTML entity を復号し、タグを除去して、Google redirect URL を正規化する", () => {
+    expect(normalizeCalendarDescription(
+      "<p>詳細はこちら<br><a href=\"https://www.google.com/url?q=https%3A%2F%2Fexample.com%2Fevent%3Fa%3D1%26b%3D2&amp;sa=D\">リンク</a></p>"
+    )).toBe("詳細はこちら\nリンク");
+  });
+
+  it("プレーンテキスト内の Google redirect URL も正規化する", () => {
+    expect(normalizeCalendarDescription(
+      "URL: https://www.google.com/url?q=https://www.animatecafe.jp/event/ac000755&amp;sa=D&amp;source=calendar"
+    )).toBe("URL: https://www.animatecafe.jp/event/ac000755");
+  });
+
+  it("空文字やタグだけの場合は undefined を返す", () => {
+    expect(normalizeCalendarDescription(" <br> ")).toBeUndefined();
+    expect(normalizeCalendarDescription(undefined)).toBeUndefined();
   });
 });
 

@@ -85,7 +85,56 @@ export function toAgendaEvent(event: calendar_v3.Schema$Event): AgendaEvent {
     startDate: event.start?.date ?? undefined,
     startDateTime: event.start?.dateTime ?? undefined,
     location: event.location ?? undefined,
-    description: event.description ?? undefined,
+    description: normalizeCalendarDescription(event.description),
     isBirthday: title.includes("誕生日")
   };
+}
+
+/**
+ * Google Calendar の description を Discord 投稿向けのプレーンテキストへ整える。
+ */
+export function normalizeCalendarDescription(description: string | null | undefined): string | undefined {
+  if (!description) {
+    return undefined;
+  }
+
+  const decoded = decodeHtmlEntities(description);
+  const withoutTags = stripHtmlTags(decoded);
+  const normalizedLinks = normalizeGoogleRedirectLinks(withoutTags);
+  const normalizedWhitespace = normalizedLinks
+    .replace(/\r\n/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  return normalizedWhitespace.length > 0 ? normalizedWhitespace : undefined;
+}
+
+export function normalizeGoogleRedirectLinks(text: string): string {
+  return text.replace(/https:\/\/www\.google\.com\/url\?[^\s<>"')]+/g, match => {
+    try {
+      const url = new URL(match);
+      const target = url.searchParams.get("q");
+      return target || match;
+    } catch {
+      return match;
+    }
+  });
+}
+
+export function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ");
+}
+
+function stripHtmlTags(text: string): string {
+  return text
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]*>/g, "");
 }

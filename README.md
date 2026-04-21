@@ -134,6 +134,9 @@ Discord webhook の `content` は 2000 文字までです。
 
 予定の `description` は 1 件あたり 100 文字を超えると `...` 付きで省略します。
 
+Google Calendar の説明文に含まれる HTML は投稿前にプレーンテキストへ整形します。`&amp;` などの HTML entity は復号し、HTML タグは除去します。
+また、説明文内に `https://www.google.com/url?q=...` 形式の Google リダイレクト URL が含まれる場合は、`q` パラメータの元 URL へ正規化します。
+
 ## GitHub Actions
 
 GitHub Actions で運用する場合は、リポジトリの `Settings` -> `Secrets and variables` -> `Actions` に以下の repository secrets を設定します。
@@ -157,7 +160,7 @@ npm run test:coverage
 npm run coverage:summary
 ```
 
-`.github/workflows/daily-agenda.yml` は毎日 JST 7:05 に同じ検証を通した後、Discord へ当日予定を投稿します。Coverage の結果は GitHub Actions の job summary に Markdown 表として表示されます。
+`.github/workflows/daily-agenda.yml` は毎日 JST 7:05 に `npm ci` と `npm run build` を実行した後、Discord へ当日予定を投稿します。テストと coverage は `.github/workflows/ci.yml` で実行します。
 
 手動実行する場合は GitHub Actions の `Run workflow` から以下を指定できます。
 
