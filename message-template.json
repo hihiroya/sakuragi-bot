@@ -1,0 +1,14 @@
+{
+  "greeting": "おはようございます。",
+  "noEventsLine": "{{date}} の予定はありません。",
+  "agendaLine": "{{date}} の予定です。",
+  "birthdayHeader": "🎉 本日の誕生日",
+  "agendaHeader": "📅 本日の予定",
+  "birthdayLine": "・🎂 {{title}}{{details}} おめでとうございます",
+  "allDayEventLine": "・📅 {{title}}{{details}}",
+  "timedEventLine": "・🕒️ {{time}}: {{title}}{{details}}",
+  "untimedEventLine": "・{{title}}{{details}}",
+  "locationDetail": " (📍: {{location}})",
+  "descriptionDetail": " (💬: {{description}})",
+  "omissionLine": "...他 {{count}} 件の予定があります"
+}

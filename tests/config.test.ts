@@ -29,13 +29,15 @@ describe("loadConfig", () => {
       readFileSync: vi.fn(() => JSON.stringify({
         googleCalendarId: " calendar-id ",
         discordWebhookUrl: "https://example.com/hook",
+        messageTemplatePath: " ./message-template.json ",
         memo: "unknown keys are ignored"
       }))
     };
 
     expect(loadConfig("config.json", fileSystem)).toEqual({
       googleCalendarId: "calendar-id",
-      discordWebhookUrl: "https://example.com/hook"
+      discordWebhookUrl: "https://example.com/hook",
+      messageTemplatePath: "./message-template.json"
     });
   });
 
@@ -57,11 +59,13 @@ describe("validateAppConfig", () => {
       googleCalendarId: " calendar-id ",
       discordWebhookUrl: " https://example.com/webhook ",
       googleServiceAccountPath: " ./service-account.json ",
+      messageTemplatePath: " ./message-template.json ",
       unknownKey: "ignored"
     })).toEqual({
       googleCalendarId: "calendar-id",
       discordWebhookUrl: "https://example.com/webhook",
-      googleServiceAccountPath: "./service-account.json"
+      googleServiceAccountPath: "./service-account.json",
+      messageTemplatePath: "./message-template.json"
     });
   });
 
@@ -186,7 +190,8 @@ describe("resolveRuntimeConfig", () => {
           private_key: "secret"
         }),
         GOOGLE_CALENDAR_ID: "calendar-id",
-        DISCORD_WEBHOOK_URL: "https://discord.com/api/webhooks/test"
+        DISCORD_WEBHOOK_URL: "https://discord.com/api/webhooks/test",
+        MESSAGE_TEMPLATE_PATH: "./message-template.json"
       },
       config: {}
     })).toEqual({
@@ -195,7 +200,8 @@ describe("resolveRuntimeConfig", () => {
       googleServiceAccount: {
         clientEmail: "bot@example.com",
         privateKey: "secret"
-      }
+      },
+      messageTemplatePath: "./message-template.json"
     });
   });
 });

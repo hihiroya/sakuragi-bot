@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { CalendarClient } from "../src/calendar.js";
 import type { AppLogger } from "../src/dependencies.js";
 import { runDailyAgenda } from "../src/dailyAgenda.js";
+import { DEFAULT_MESSAGE_TEMPLATE } from "../src/messageTemplate.js";
 
 function createLogger(): AppLogger {
   return {
@@ -30,6 +31,11 @@ describe("runDailyAgenda", () => {
     const listEventsFn = vi.fn(async () => events);
     const discordClient = { post: vi.fn(async () => undefined) };
     const createDiscordClientFn = vi.fn(() => discordClient);
+    const messageTemplate = {
+      ...DEFAULT_MESSAGE_TEMPLATE,
+      greeting: "お疲れさまです。"
+    };
+    const loadMessageTemplateFn = vi.fn(() => messageTemplate);
     const buildMessageFn = vi.fn(() => "投稿本文");
 
     await runDailyAgenda({
@@ -42,7 +48,7 @@ describe("runDailyAgenda", () => {
         DISCORD_WEBHOOK_URL: "https://discord.com/api/webhooks/test"
       },
       logger,
-      loadConfigFn: () => ({}),
+      loadConfigFn: () => ({ messageTemplatePath: "./custom-template.json" }),
       createCalendarClient,
       listEventsFn,
       createDiscordClientFn,
@@ -51,6 +57,7 @@ describe("runDailyAgenda", () => {
         timeMin: "2026-04-18T15:00:00.000Z",
         timeMax: "2026-04-19T15:00:00.000Z"
       }),
+      loadMessageTemplateFn,
       buildMessageFn
     });
 
@@ -66,7 +73,8 @@ describe("runDailyAgenda", () => {
       timeMax: "2026-04-19T15:00:00.000Z",
       label: "2026-04-19"
     });
-    expect(buildMessageFn).toHaveBeenCalledWith(events, "2026-04-19");
+    expect(loadMessageTemplateFn).toHaveBeenCalledWith("./custom-template.json");
+    expect(buildMessageFn).toHaveBeenCalledWith(events, "2026-04-19", messageTemplate);
     expect(discordClient.post).toHaveBeenCalledWith("投稿本文");
     expect(logger.info).toHaveBeenCalledWith("Posted: 2026-04-19 (2 events)");
   });

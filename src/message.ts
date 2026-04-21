@@ -1,4 +1,9 @@
 import type { AgendaEvent, TodayRange } from "./domain.js";
+import {
+  DEFAULT_MESSAGE_TEMPLATE,
+  renderTemplate,
+  type MessageTemplate
+} from "./messageTemplate.js";
 
 export const TZ = "Asia/Tokyo";
 export const MAX_DISCORD_CONTENT = 2000;
@@ -40,24 +45,43 @@ const formatter = new Intl.DateTimeFormat("ja-JP", {
 /**
  * 通常予定を Discord 投稿用の 1 行へ整形する。
  */
-export function formatEvent(event: AgendaEvent): string {
-  const fullTitle = appendEventDetails(event.title, event);
+export function formatEvent(
+  event: AgendaEvent,
+  template: MessageTemplate = DEFAULT_MESSAGE_TEMPLATE
+): string {
+  const details = appendEventDetails(event, template);
 
   if (event.startDate) {
-    return `・📅 ${fullTitle}`;
+    return renderTemplate(template.allDayEventLine, {
+      title: event.title,
+      details
+    });
   }
   if (event.startDateTime) {
     const t = formatter.format(new Date(event.startDateTime));
-    return `・🕒️ ${t}: ${fullTitle}`;
+    return renderTemplate(template.timedEventLine, {
+      title: event.title,
+      details,
+      time: t
+    });
   }
-  return `・${fullTitle}`;
+  return renderTemplate(template.untimedEventLine, {
+    title: event.title,
+    details
+  });
 }
 
 /**
  * 誕生日予定を祝福文つきの 1 行へ整形する。
  */
-export function formatBirthday(event: AgendaEvent): string {
-  return `・🎂 ${appendEventDetails(event.title, event)} おめでとうございます`;
+export function formatBirthday(
+  event: AgendaEvent,
+  template: MessageTemplate = DEFAULT_MESSAGE_TEMPLATE
+): string {
+  return renderTemplate(template.birthdayLine, {
+    title: event.title,
+    details: appendEventDetails(event, template)
+  });
 }
 
 /**
@@ -65,37 +89,42 @@ export function formatBirthday(event: AgendaEvent): string {
  */
 export function buildMessage(
   events: AgendaEvent[],
-  label: string
+  label: string,
+  template: MessageTemplate = DEFAULT_MESSAGE_TEMPLATE
 ): string {
   if (events.length === 0) {
-    return `おはようございます。\n${label} の予定はありません。`;
+    return [
+      template.greeting,
+      renderTemplate(template.noEventsLine, { date: label })
+    ].join("\n");
   }
 
   const baseLines: string[] = [
-    "おはようございます。",
-    `${label} の予定です。`
+    template.greeting,
+    renderTemplate(template.agendaLine, { date: label })
   ];
 
-  return buildLimitedMessage(baseLines, buildSections(events));
+  return buildLimitedMessage(baseLines, buildSections(events, template), template);
 }
 
-function buildSections(events: AgendaEvent[]) {
+function buildSections(events: AgendaEvent[], template: MessageTemplate) {
   const birthdays = events
     .filter(event => event.isBirthday)
-    .map(formatBirthday);
+    .map(event => formatBirthday(event, template));
   const normals = events
     .filter(event => !event.isBirthday)
-    .map(formatEvent);
+    .map(event => formatEvent(event, template));
 
   return [
-    { header: "🎉 本日の誕生日", lines: birthdays },
-    { header: "📅 本日の予定", lines: normals }
+    { header: template.birthdayHeader, lines: birthdays },
+    { header: template.agendaHeader, lines: normals }
   ];
 }
 
 function buildLimitedMessage(
   baseLines: string[],
-  sections: Array<{ header: string; lines: string[] }>
+  sections: Array<{ header: string; lines: string[] }>,
+  template: MessageTemplate
 ): string {
   const outputLines = [...baseLines];
   const includedEventLineIndexes: number[] = [];
@@ -121,36 +150,39 @@ function buildLimitedMessage(
   }
 
   if (omitted > 0) {
-    appendOmissionLine(outputLines, includedEventLineIndexes, omitted);
+    appendOmissionLine(outputLines, includedEventLineIndexes, omitted, template);
   }
 
   return outputLines.join("\n");
 }
 
-function appendEventDetails(title: string, event: AgendaEvent): string {
+function appendEventDetails(event: AgendaEvent, template: MessageTemplate): string {
   let details = "";
-  if (event.location) details += ` (📍: ${event.location})`;
+  if (event.location) {
+    details += renderTemplate(template.locationDetail, { location: event.location });
+  }
   if (event.description) {
     const comment = event.description.length > 100 ? event.description.substring(0, 100) + "..." : event.description;
-    details += ` (💬: ${comment})`;
+    details += renderTemplate(template.descriptionDetail, { description: comment });
   }
-  return title + details;
+  return details;
 }
 
 function appendOmissionLine(
   outputLines: string[],
   includedEventLineIndexes: number[],
-  initialOmitted: number
+  initialOmitted: number,
+  template: MessageTemplate
 ) {
   let omitted = initialOmitted;
-  let omissionLine = buildOmissionLine(omitted);
+  let omissionLine = buildOmissionLine(omitted, template);
 
   // 省略表示そのものが上限を超えないよう、末尾の予定を削って枠を空ける。
   while (!canAppend(outputLines, [omissionLine]) && includedEventLineIndexes.length > 0) {
     const index = includedEventLineIndexes.pop()!;
     outputLines.splice(index, 1);
     omitted += 1;
-    omissionLine = buildOmissionLine(omitted);
+    omissionLine = buildOmissionLine(omitted, template);
   }
 
   if (canAppend(outputLines, [omissionLine])) {
@@ -162,6 +194,6 @@ function canAppend(lines: string[], nextLines: string[]): boolean {
   return [...lines, ...nextLines].join("\n").length <= MAX_DISCORD_CONTENT;
 }
 
-function buildOmissionLine(count: number): string {
-  return `...他 ${count} 件の予定があります`;
+function buildOmissionLine(count: number, template: MessageTemplate): string {
+  return renderTemplate(template.omissionLine, { count });
 }

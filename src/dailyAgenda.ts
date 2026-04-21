@@ -12,6 +12,7 @@ import type { AgendaEvent } from "./domain.js";
 import { logGoogleApiError } from "./errors.js";
 import { logger } from "./logger.js";
 import { buildMessage, getTodayRange } from "./message.js";
+import { loadMessageTemplate } from "./messageTemplate.js";
 
 /**
  * Google Calendar の当日予定を取得し、Discord へ投稿する日次処理。
@@ -31,11 +32,15 @@ export async function runDailyAgenda({
     logger
   }),
   getTodayRangeFn = getTodayRange,
+  loadMessageTemplateFn = templatePath => loadMessageTemplate(templatePath, undefined, error => {
+    appLogger.warn("投稿テンプレートの読み込みに失敗しました。既定文言を使用します。", { error });
+  }),
   buildMessageFn = buildMessage
 }: DailyAgendaDependencies = {}) {
   const config = loadConfigFn();
   const source = { env, config };
   const runtimeConfig = resolveRuntimeConfigFn(source);
+  const messageTemplate = loadMessageTemplateFn(runtimeConfig.messageTemplatePath);
 
   const calendar = createCalendarClient(runtimeConfig.googleServiceAccount);
   const discordClient = createDiscordClientFn({
@@ -53,7 +58,7 @@ export async function runDailyAgenda({
     throw error;
   }
 
-  const msg = buildMessageFn(events, label);
+  const msg = buildMessageFn(events, label, messageTemplate);
   await discordClient.post(msg);
   appLogger.info(`Posted: ${label} (${events.length} events)`);
 }

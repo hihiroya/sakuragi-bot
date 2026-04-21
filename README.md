@@ -12,9 +12,44 @@ Google Calendar の当日予定を Discord webhook へ投稿する bot です。
 | `DISCORD_WEBHOOK_URL` | `discordWebhookUrl` | 投稿先の Discord webhook URL |
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | - | Google サービスアカウント JSON の文字列 |
 | `GOOGLE_SERVICE_ACCOUNT_PATH` | `googleServiceAccountPath` | Google サービスアカウント JSON ファイルのパス |
+| `MESSAGE_TEMPLATE_PATH` | `messageTemplatePath` | 投稿文テンプレート JSON ファイルのパス |
 
 `GOOGLE_SERVICE_ACCOUNT_JSON` が JSON 文字列として設定されている場合は、ファイルパスより優先されます。
 `config.json` は JSON object として読み込み、既知の設定キーは文字列であることを検証します。前後の空白は取り除き、空白だけの値は未設定として扱います。未知のキーは無視されます。
+`MESSAGE_TEMPLATE_PATH` が未設定の場合は、リポジトリ直下の `message-template.json` を読み込みます。テンプレートファイルがない、または読み込みに失敗した場合は既定文言で投稿します。
+
+## 投稿文テンプレート
+
+投稿本文の文言は `message-template.json` で編集できます。すべてのキーは任意です。未設定のキーや空白だけの値は既定文言で補完します。
+
+```json
+{
+  "greeting": "おはようございます。",
+  "noEventsLine": "{{date}} の予定はありません。",
+  "agendaLine": "{{date}} の予定です。",
+  "birthdayHeader": "🎉 本日の誕生日",
+  "agendaHeader": "📅 本日の予定",
+  "birthdayLine": "・🎂 {{title}}{{details}} おめでとうございます",
+  "allDayEventLine": "・📅 {{title}}{{details}}",
+  "timedEventLine": "・🕒️ {{time}}: {{title}}{{details}}",
+  "untimedEventLine": "・{{title}}{{details}}",
+  "locationDetail": " (📍: {{location}})",
+  "descriptionDetail": " (💬: {{description}})",
+  "omissionLine": "...他 {{count}} 件の予定があります"
+}
+```
+
+使える placeholder は以下です。
+
+| キー | placeholder |
+| --- | --- |
+| `noEventsLine`, `agendaLine` | `{{date}}` |
+| `birthdayLine` | `{{title}}`, `{{details}}` |
+| `allDayEventLine`, `untimedEventLine` | `{{title}}`, `{{details}}` |
+| `timedEventLine` | `{{time}}`, `{{title}}`, `{{details}}` |
+| `locationDetail` | `{{location}}` |
+| `descriptionDetail` | `{{description}}` |
+| `omissionLine` | `{{count}}` |
 
 ## Google Calendar の共有手順
 
@@ -68,6 +103,7 @@ npm run test:coverage
 | `src/dependencies.ts` | 日次処理へ注入する依存関係の型定義。 |
 | `src/domain.ts` | アプリ内部で使う予定型などのドメイン型。 |
 | `src/message.ts` | Discord 投稿本文の生成。 |
+| `src/messageTemplate.ts` | 投稿文テンプレートの読み込み・検証・placeholder 置換。 |
 | `src/discord.ts` | Discord webhook 投稿と retry 制御。 |
 | `src/config.ts` | 設定ファイル・環境変数・URL/JSON 検証。 |
 | `src/logger.ts` | winston logger の生成。 |

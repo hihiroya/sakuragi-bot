@@ -5,6 +5,7 @@ export type AppConfig = {
   googleCalendarId?: string;
   discordWebhookUrl?: string;
   googleServiceAccountPath?: string;
+  messageTemplatePath?: string;
 };
 
 export type ConfigSource = {
@@ -21,6 +22,7 @@ export type RuntimeConfig = {
   googleCalendarId: string;
   discordWebhookUrl: string;
   googleServiceAccount: ServiceAccountCredentials;
+  messageTemplatePath?: string;
 };
 
 type ConfigFieldDefinition = {
@@ -40,6 +42,10 @@ export const CONFIG_FIELDS = {
   googleServiceAccountPath: {
     envName: "GOOGLE_SERVICE_ACCOUNT_PATH",
     configKey: "googleServiceAccountPath"
+  },
+  messageTemplatePath: {
+    envName: "MESSAGE_TEMPLATE_PATH",
+    configKey: "messageTemplatePath"
   }
 } as const satisfies Record<keyof AppConfig, ConfigFieldDefinition>;
 
@@ -127,12 +133,21 @@ export function resolveRuntimeConfig(
   const googleServiceAccount = validateServiceAccountJson(
     getServiceAccountJson(source, fileSystem, cwd)
   );
+  const messageTemplatePath = getConfigValue(
+    CONFIG_FIELDS.messageTemplatePath.envName,
+    CONFIG_FIELDS.messageTemplatePath.configKey,
+    source
+  );
 
-  return {
+  const runtimeConfig: RuntimeConfig = {
     googleCalendarId,
     discordWebhookUrl,
     googleServiceAccount
   };
+  if (messageTemplatePath) {
+    runtimeConfig.messageTemplatePath = messageTemplatePath;
+  }
+  return runtimeConfig;
 }
 
 /**

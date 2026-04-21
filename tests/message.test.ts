@@ -6,6 +6,7 @@ import {
   getTodayRange,
   MAX_DISCORD_CONTENT
 } from "../src/message.js";
+import { DEFAULT_MESSAGE_TEMPLATE } from "../src/messageTemplate.js";
 
 describe("getTodayRange", () => {
   it("JST の日付境界で当日範囲を返す", () => {
@@ -43,6 +44,17 @@ describe("formatEvent", () => {
     expect(line).toMatch(/09:30/);
   });
 
+  it("テンプレートで通常予定の行を差し替えられる", () => {
+    expect(formatEvent({
+      title: "朝会",
+      startDateTime: "2026-04-19T09:30:00+09:00",
+      isBirthday: false
+    }, {
+      ...DEFAULT_MESSAGE_TEMPLATE,
+      timedEventLine: "[{{time}}] {{title}}{{details}}"
+    })).toMatch(/^\[.*09:30\] 朝会$/);
+  });
+
   it("開始日時がないイベントもタイトルだけで表示する", () => {
     expect(formatEvent({ title: "無題", isBirthday: false })).toBe("・無題");
   });
@@ -62,6 +74,14 @@ describe("buildMessage", () => {
   it("予定がない日は予定なしの本文を返す", () => {
     expect(buildMessage([], "2026-04-19"))
       .toBe("おはようございます。\n2026-04-19 の予定はありません。");
+  });
+
+  it("テンプレートで予定なし本文を差し替えられる", () => {
+    expect(buildMessage([], "2026-04-19", {
+      ...DEFAULT_MESSAGE_TEMPLATE,
+      greeting: "お疲れさまです。",
+      noEventsLine: "{{date}} は予定なしです。"
+    })).toBe("お疲れさまです。\n2026-04-19 は予定なしです。");
   });
 
   it("誕生日と通常予定をセクション分けして表示する", () => {

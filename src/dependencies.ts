@@ -2,6 +2,7 @@ import type { CalendarClient } from "./calendar.js";
 import type { AppConfig, RuntimeConfig } from "./config.js";
 import type { DiscordClient, PostLogger } from "./discord.js";
 import type { AgendaEvent, TodayRange } from "./domain.js";
+import type { MessageTemplate } from "./messageTemplate.js";
 import type { buildMessage } from "./message.js";
 
 export type AppLogger = PostLogger & {
@@ -26,5 +27,6 @@ export type DailyAgendaDependencies = {
     logger: PostLogger
   ) => DiscordClient;
   getTodayRangeFn?: () => TodayRange;
+  loadMessageTemplateFn?: (templatePath?: string) => MessageTemplate;
   buildMessageFn?: typeof buildMessage;
 };
