@@ -2,5 +2,6 @@
   "googleCalendarId": "your-calendar-id@group.calendar.google.com",
   "discordWebhookUrl": "https://discord.com/api/webhooks/your/webhook/url",
   "googleServiceAccountPath": "./service-account.json",
-  "messageTemplatePath": "./message-template.json"
+  "messageTemplatePath": "./message-template.json",
+  "postWhenNoEvents": false
 }

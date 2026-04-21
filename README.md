@@ -13,10 +13,12 @@ Google Calendar の当日予定を Discord webhook へ投稿する bot です。
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | - | Google サービスアカウント JSON の文字列 |
 | `GOOGLE_SERVICE_ACCOUNT_PATH` | `googleServiceAccountPath` | Google サービスアカウント JSON ファイルのパス |
 | `MESSAGE_TEMPLATE_PATH` | `messageTemplatePath` | 投稿文テンプレート JSON ファイルのパス |
+| `POST_WHEN_NO_EVENTS` | `postWhenNoEvents` | 予定がない日も Discord へ投稿するか |
 
 `GOOGLE_SERVICE_ACCOUNT_JSON` が JSON 文字列として設定されている場合は、ファイルパスより優先されます。
 `config.json` は JSON object として読み込み、既知の設定キーは文字列であることを検証します。前後の空白は取り除き、空白だけの値は未設定として扱います。未知のキーは無視されます。
 `MESSAGE_TEMPLATE_PATH` が未設定の場合は、リポジトリ直下の `message-template.json` を読み込みます。テンプレートファイルがない、または読み込みに失敗した場合は既定文言で投稿します。
+`postWhenNoEvents` のデフォルトは `false` です。予定がない日は投稿せず、ログに `Skipped: YYYY-MM-DD (0 events)` を出します。予定なしの日も投稿したい場合は `config.json` で `true`、または環境変数 `POST_WHEN_NO_EVENTS=true` を設定してください。
 
 ## 投稿文テンプレート
 

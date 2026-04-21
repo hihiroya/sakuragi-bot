@@ -40,12 +40,8 @@ export async function runDailyAgenda({
   const config = loadConfigFn();
   const source = { env, config };
   const runtimeConfig = resolveRuntimeConfigFn(source);
-  const messageTemplate = loadMessageTemplateFn(runtimeConfig.messageTemplatePath);
 
   const calendar = createCalendarClient(runtimeConfig.googleServiceAccount);
-  const discordClient = createDiscordClientFn({
-    discordWebhookUrl: runtimeConfig.discordWebhookUrl
-  }, appLogger);
   const { timeMin, timeMax, label } = getTodayRangeFn();
 
   let events: AgendaEvent[] = [];
@@ -58,6 +54,15 @@ export async function runDailyAgenda({
     throw error;
   }
 
+  if (events.length === 0 && !runtimeConfig.postWhenNoEvents) {
+    appLogger.info(`Skipped: ${label} (0 events)`);
+    return;
+  }
+
+  const messageTemplate = loadMessageTemplateFn(runtimeConfig.messageTemplatePath);
+  const discordClient = createDiscordClientFn({
+    discordWebhookUrl: runtimeConfig.discordWebhookUrl
+  }, appLogger);
   const msg = buildMessageFn(events, label, messageTemplate);
   await discordClient.post(msg);
   appLogger.info(`Posted: ${label} (${events.length} events)`);

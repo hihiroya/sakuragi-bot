@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  getBooleanConfigValue,
   getConfigValue,
   getRequiredConfigValue,
   getServiceAccountJson,
@@ -30,6 +31,7 @@ describe("loadConfig", () => {
         googleCalendarId: " calendar-id ",
         discordWebhookUrl: "https://example.com/hook",
         messageTemplatePath: " ./message-template.json ",
+        postWhenNoEvents: true,
         memo: "unknown keys are ignored"
       }))
     };
@@ -37,7 +39,8 @@ describe("loadConfig", () => {
     expect(loadConfig("config.json", fileSystem)).toEqual({
       googleCalendarId: "calendar-id",
       discordWebhookUrl: "https://example.com/hook",
-      messageTemplatePath: "./message-template.json"
+      messageTemplatePath: "./message-template.json",
+      postWhenNoEvents: true
     });
   });
 
@@ -60,12 +63,14 @@ describe("validateAppConfig", () => {
       discordWebhookUrl: " https://example.com/webhook ",
       googleServiceAccountPath: " ./service-account.json ",
       messageTemplatePath: " ./message-template.json ",
+      postWhenNoEvents: true,
       unknownKey: "ignored"
     })).toEqual({
       googleCalendarId: "calendar-id",
       discordWebhookUrl: "https://example.com/webhook",
       googleServiceAccountPath: "./service-account.json",
-      messageTemplatePath: "./message-template.json"
+      messageTemplatePath: "./message-template.json",
+      postWhenNoEvents: true
     });
   });
 
@@ -85,6 +90,12 @@ describe("validateAppConfig", () => {
     expect(() => validateAppConfig({
       googleCalendarId: 123
     })).toThrow("config.googleCalendarId は文字列である必要があります。");
+  });
+
+  it("postWhenNoEvents が boolean ではない場合はエラーを投げる", () => {
+    expect(() => validateAppConfig({
+      postWhenNoEvents: "true"
+    })).toThrow("config.postWhenNoEvents は boolean である必要があります。");
   });
 });
 
@@ -122,6 +133,31 @@ describe("設定値の取得", () => {
       env: {},
       config: { googleCalendarId: "calendar-id" }
     })).toBe("calendar-id");
+  });
+
+  it("boolean 設定は環境変数を config より優先する", () => {
+    expect(getBooleanConfigValue("POST_WHEN_NO_EVENTS", "postWhenNoEvents", {
+      env: { POST_WHEN_NO_EVENTS: "false" },
+      config: { postWhenNoEvents: true }
+    })).toBe(false);
+  });
+
+  it("boolean 環境変数の true/false 表現を解釈する", () => {
+    expect(getBooleanConfigValue("POST_WHEN_NO_EVENTS", "postWhenNoEvents", {
+      env: { POST_WHEN_NO_EVENTS: "1" },
+      config: {}
+    })).toBe(true);
+    expect(getBooleanConfigValue("POST_WHEN_NO_EVENTS", "postWhenNoEvents", {
+      env: { POST_WHEN_NO_EVENTS: "off" },
+      config: {}
+    })).toBe(false);
+  });
+
+  it("boolean 環境変数が不正な場合はエラーを投げる", () => {
+    expect(() => getBooleanConfigValue("POST_WHEN_NO_EVENTS", "postWhenNoEvents", {
+      env: { POST_WHEN_NO_EVENTS: "maybe" },
+      config: {}
+    })).toThrow("POST_WHEN_NO_EVENTS は true/false の値である必要があります。");
   });
 });
 
@@ -191,7 +227,8 @@ describe("resolveRuntimeConfig", () => {
         }),
         GOOGLE_CALENDAR_ID: "calendar-id",
         DISCORD_WEBHOOK_URL: "https://discord.com/api/webhooks/test",
-        MESSAGE_TEMPLATE_PATH: "./message-template.json"
+        MESSAGE_TEMPLATE_PATH: "./message-template.json",
+        POST_WHEN_NO_EVENTS: "true"
       },
       config: {}
     })).toEqual({
@@ -201,8 +238,23 @@ describe("resolveRuntimeConfig", () => {
         clientEmail: "bot@example.com",
         privateKey: "secret"
       },
-      messageTemplatePath: "./message-template.json"
+      messageTemplatePath: "./message-template.json",
+      postWhenNoEvents: true
     });
+  });
+
+  it("postWhenNoEvents は未設定の場合 false になる", () => {
+    expect(resolveRuntimeConfig({
+      env: {
+        GOOGLE_SERVICE_ACCOUNT_JSON: JSON.stringify({
+          client_email: "bot@example.com",
+          private_key: "secret"
+        }),
+        GOOGLE_CALENDAR_ID: "calendar-id",
+        DISCORD_WEBHOOK_URL: "https://discord.com/api/webhooks/test"
+      },
+      config: {}
+    }).postWhenNoEvents).toBe(false);
   });
 });
 

@@ -6,6 +6,7 @@ export type AppConfig = {
   discordWebhookUrl?: string;
   googleServiceAccountPath?: string;
   messageTemplatePath?: string;
+  postWhenNoEvents?: boolean;
 };
 
 export type ConfigSource = {
@@ -23,12 +24,18 @@ export type RuntimeConfig = {
   discordWebhookUrl: string;
   googleServiceAccount: ServiceAccountCredentials;
   messageTemplatePath?: string;
+  postWhenNoEvents: boolean;
 };
 
 type ConfigFieldDefinition = {
   envName: string;
-  configKey: keyof AppConfig;
+  configKey: Exclude<keyof AppConfig, "postWhenNoEvents">;
 };
+
+export const POST_WHEN_NO_EVENTS_FIELD = {
+  envName: "POST_WHEN_NO_EVENTS",
+  configKey: "postWhenNoEvents"
+} as const;
 
 export const CONFIG_FIELDS = {
   googleCalendarId: {
@@ -47,7 +54,7 @@ export const CONFIG_FIELDS = {
     envName: "MESSAGE_TEMPLATE_PATH",
     configKey: "messageTemplatePath"
   }
-} as const satisfies Record<keyof AppConfig, ConfigFieldDefinition>;
+} as const satisfies Record<Exclude<keyof AppConfig, "postWhenNoEvents">, ConfigFieldDefinition>;
 
 /**
  * config.json を読み込む。
@@ -91,6 +98,13 @@ export function validateAppConfig(raw: unknown, name = "config.json"): AppConfig
     if (value !== undefined) {
       config[definition.configKey] = value;
     }
+  }
+  const postWhenNoEvents = normalizeOptionalBoolean(
+    raw[POST_WHEN_NO_EVENTS_FIELD.configKey],
+    `config.${POST_WHEN_NO_EVENTS_FIELD.configKey}`
+  );
+  if (postWhenNoEvents !== undefined) {
+    config.postWhenNoEvents = postWhenNoEvents;
   }
   return config;
 }
@@ -142,12 +156,28 @@ export function resolveRuntimeConfig(
   const runtimeConfig: RuntimeConfig = {
     googleCalendarId,
     discordWebhookUrl,
-    googleServiceAccount
+    googleServiceAccount,
+    postWhenNoEvents: getBooleanConfigValue(
+      POST_WHEN_NO_EVENTS_FIELD.envName,
+      POST_WHEN_NO_EVENTS_FIELD.configKey,
+      source
+    ) ?? false
   };
   if (messageTemplatePath) {
     runtimeConfig.messageTemplatePath = messageTemplatePath;
   }
   return runtimeConfig;
+}
+
+export function getBooleanConfigValue(
+  envName: string,
+  configKey: "postWhenNoEvents",
+  source: ConfigSource
+): boolean | undefined {
+  const envValue = normalizeOptionalBooleanString(source.env?.[envName], envName);
+  if (envValue !== undefined) return envValue;
+
+  return normalizeOptionalBoolean(source.config?.[configKey], `config.${configKey}`);
 }
 
 /**
@@ -259,6 +289,32 @@ function normalizeOptionalString(value: unknown, name: string): string | undefin
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function normalizeOptionalBoolean(value: unknown, name: string): boolean | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value !== "boolean") {
+    throw new Error(`${name} は boolean である必要があります。`);
+  }
+  return value;
+}
+
+function normalizeOptionalBooleanString(value: unknown, name: string): boolean | undefined {
+  const normalized = normalizeOptionalString(value, name);
+  if (normalized === undefined) {
+    return undefined;
+  }
+
+  const lower = normalized.toLowerCase();
+  if (["true", "1", "yes", "on"].includes(lower)) {
+    return true;
+  }
+  if (["false", "0", "no", "off"].includes(lower)) {
+    return false;
+  }
+  throw new Error(`${name} は true/false の値である必要があります。`);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

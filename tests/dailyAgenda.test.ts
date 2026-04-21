@@ -121,6 +121,87 @@ describe("runDailyAgenda", () => {
     );
   });
 
+  it("予定がない日は既定で Discord 投稿をスキップする", async () => {
+    const logger = createLogger();
+    const calendar: CalendarClient = {
+      events: {
+        list: vi.fn(async () => ({ data: { items: [] } }))
+      }
+    };
+    const listEventsFn = vi.fn(async () => []);
+    const createDiscordClientFn = vi.fn(() => ({ post: vi.fn(async () => undefined) }));
+    const loadMessageTemplateFn = vi.fn(() => DEFAULT_MESSAGE_TEMPLATE);
+    const buildMessageFn = vi.fn(() => "投稿本文");
+
+    await runDailyAgenda({
+      env: {
+        GOOGLE_SERVICE_ACCOUNT_JSON: JSON.stringify({
+          client_email: "bot@example.com",
+          private_key: "secret"
+        }),
+        GOOGLE_CALENDAR_ID: "calendar-id",
+        DISCORD_WEBHOOK_URL: "https://discord.com/api/webhooks/test"
+      },
+      logger,
+      loadConfigFn: () => ({}),
+      createCalendarClient: () => calendar,
+      listEventsFn,
+      createDiscordClientFn,
+      getTodayRangeFn: () => ({
+        label: "2026-04-19",
+        timeMin: "2026-04-18T15:00:00.000Z",
+        timeMax: "2026-04-19T15:00:00.000Z"
+      }),
+      loadMessageTemplateFn,
+      buildMessageFn
+    });
+
+    expect(listEventsFn).toHaveBeenCalledOnce();
+    expect(loadMessageTemplateFn).not.toHaveBeenCalled();
+    expect(buildMessageFn).not.toHaveBeenCalled();
+    expect(createDiscordClientFn).not.toHaveBeenCalled();
+    expect(logger.info).toHaveBeenCalledWith("Skipped: 2026-04-19 (0 events)");
+  });
+
+  it("postWhenNoEvents が true の場合は予定がない日も投稿する", async () => {
+    const logger = createLogger();
+    const calendar: CalendarClient = {
+      events: {
+        list: vi.fn(async () => ({ data: { items: [] } }))
+      }
+    };
+    const discordClient = { post: vi.fn(async () => undefined) };
+    const buildMessageFn = vi.fn(() => "予定なし本文");
+
+    await runDailyAgenda({
+      env: {
+        GOOGLE_SERVICE_ACCOUNT_JSON: JSON.stringify({
+          client_email: "bot@example.com",
+          private_key: "secret"
+        }),
+        GOOGLE_CALENDAR_ID: "calendar-id",
+        DISCORD_WEBHOOK_URL: "https://discord.com/api/webhooks/test",
+        POST_WHEN_NO_EVENTS: "true"
+      },
+      logger,
+      loadConfigFn: () => ({}),
+      createCalendarClient: () => calendar,
+      listEventsFn: vi.fn(async () => []),
+      createDiscordClientFn: () => discordClient,
+      getTodayRangeFn: () => ({
+        label: "2026-04-19",
+        timeMin: "2026-04-18T15:00:00.000Z",
+        timeMax: "2026-04-19T15:00:00.000Z"
+      }),
+      loadMessageTemplateFn: () => DEFAULT_MESSAGE_TEMPLATE,
+      buildMessageFn
+    });
+
+    expect(buildMessageFn).toHaveBeenCalledWith([], "2026-04-19", DEFAULT_MESSAGE_TEMPLATE);
+    expect(discordClient.post).toHaveBeenCalledWith("予定なし本文");
+    expect(logger.info).toHaveBeenCalledWith("Posted: 2026-04-19 (0 events)");
+  });
+
   it("既定の config 読み込みで config.json が壊れていても環境変数だけで実行できる", async () => {
     const logger = createLogger();
     const originalCwd = process.cwd();
@@ -162,6 +243,6 @@ describe("runDailyAgenda", () => {
       "config.json の読み込みに失敗しました。",
       expect.objectContaining({ error: expect.any(Error) })
     );
-    expect(logger.info).toHaveBeenCalledWith("Posted: 2026-04-19 (0 events)");
+    expect(logger.info).toHaveBeenCalledWith("Skipped: 2026-04-19 (0 events)");
   });
 });
