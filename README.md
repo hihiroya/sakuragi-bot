@@ -45,6 +45,7 @@ Google Calendar の当日予定を Discord webhook へ投稿する bot です。
   "expandedTimedEventTitleLine": "・🕒️ {{title}}",
   "expandedUntimedEventTitleLine": "・{{title}}",
   "expandedProgressLine": "　⏳ {{dayIndex}}日目 / 全{{totalDays}}日（残り{{remainingDays}}日）",
+  "expandedFinalDayProgressLine": "　⏳ {{dayIndex}}日目 / 全{{totalDays}}日（最終日）",
   "expandedDateLine": "　📅 {{date}}",
   "expandedDateRangeLine": "　📅 {{dateRange}}",
   "expandedTimeLine": "　🕒 {{time}}",
@@ -69,6 +70,7 @@ Google Calendar の当日予定を Discord webhook へ投稿する bot です。
 | `descriptionDetail` | `{{description}}` |
 | `expandedAllDayEventTitleLine`, `expandedTimedEventTitleLine`, `expandedUntimedEventTitleLine` | `{{title}}` |
 | `expandedProgressLine` | `{{dayIndex}}`, `{{totalDays}}`, `{{remainingDays}}` |
+| `expandedFinalDayProgressLine` | `{{dayIndex}}`, `{{totalDays}}`, `{{remainingDays}}` |
 | `expandedDateLine` | `{{date}}` |
 | `expandedDateRangeLine` | `{{dateRange}}` |
 | `expandedTimeLine` | `{{time}}` |
@@ -79,6 +81,7 @@ Google Calendar の当日予定を Discord webhook へ投稿する bot です。
 
 通常予定が 1 件だけの日は、終日予定・時間付き予定・複数日予定を複数行の詳細表示にします。通常予定が複数件ある日は 1 予定 1 行の compact 表示にします。
 複数日の終日予定では、Google Calendar の終了日が排他的であることを考慮して、表示上の終了日は `end.date` の前日になります。進捗の残り日数は当日を含めて計算します。
+最終日は `expandedProgressLine` ではなく `expandedFinalDayProgressLine` を使うため、既定では `残り1日` ではなく `最終日` と表示します。
 `expandedProgressLine` などの詳細表示用テンプレートは、先頭の全角スペースを保持します。タイトル行の `・` の分だけ字下げしたい場合は、既定値のように行頭へ全角スペースを入れてください。
 
 ## Google Calendar の共有手順

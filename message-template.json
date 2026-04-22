@@ -16,6 +16,7 @@
   "expandedTimedEventTitleLine": "・⏰ {{title}}",
   "expandedUntimedEventTitleLine": "・{{title}}",
   "expandedProgressLine": "　⏳ {{dayIndex}}日目 / 全{{totalDays}}日（残り{{remainingDays}}日）",
+  "expandedFinalDayProgressLine": "　⏳ {{dayIndex}}日目 / 全{{totalDays}}日（最終日）",
   "expandedDateLine": "　📅 {{date}}",
   "expandedDateRangeLine": "　📅 {{dateRange}}",
   "expandedTimeLine": "　🕒 {{time}}",

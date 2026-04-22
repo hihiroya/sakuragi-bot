@@ -214,6 +214,22 @@ describe("buildMessage", () => {
     ].join("\n"));
   });
 
+  it("複数日終日予定の最終日は残り1日ではなく最終日として表示する", () => {
+    const message = buildMessage([{
+      title: "アニメイトカフェコラボ",
+      startDate: "2026-04-03",
+      endDate: "2026-04-27",
+      isBirthday: false
+    }], "2026-04-26");
+
+    expect(message).toContain([
+      "・📅 アニメイトカフェコラボ",
+      "　⏳ 24日目 / 全24日（最終日）",
+      "　📅 4/3〜4/26"
+    ].join("\n"));
+    expect(message).not.toContain("残り1日");
+  });
+
   it("外部テンプレート読み込み後も詳細表示のインデントを保持する", () => {
     const message = buildMessage([{
       title: "アニメイトカフェコラボ",

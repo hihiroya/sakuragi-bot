@@ -19,6 +19,7 @@ export type MessageTemplate = {
   expandedTimedEventTitleLine: string;
   expandedUntimedEventTitleLine: string;
   expandedProgressLine: string;
+  expandedFinalDayProgressLine: string;
   expandedDateLine: string;
   expandedDateRangeLine: string;
   expandedTimeLine: string;
@@ -46,6 +47,7 @@ export const DEFAULT_MESSAGE_TEMPLATE: MessageTemplate = {
   expandedTimedEventTitleLine: "・🕒️ {{title}}",
   expandedUntimedEventTitleLine: "・{{title}}",
   expandedProgressLine: "　⏳ {{dayIndex}}日目 / 全{{totalDays}}日（残り{{remainingDays}}日）",
+  expandedFinalDayProgressLine: "　⏳ {{dayIndex}}日目 / 全{{totalDays}}日（最終日）",
   expandedDateLine: "　📅 {{date}}",
   expandedDateRangeLine: "　📅 {{dateRange}}",
   expandedTimeLine: "　🕒 {{time}}",

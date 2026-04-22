@@ -178,7 +178,7 @@ function renderExpandedEvent(model: EventDisplayModel, template: MessageTemplate
   switch (model.kind) {
     case "multiDayAllDay":
       lines.push(renderTemplate(template.expandedAllDayEventTitleLine, { title: model.title }));
-      lines.push(renderTemplate(template.expandedProgressLine, {
+      lines.push(renderTemplate(getProgressLineTemplate(model, template), {
         dayIndex: model.span!.dayIndex,
         totalDays: model.span!.totalDays,
         remainingDays: model.span!.remainingDays
@@ -212,6 +212,12 @@ function renderExpandedEvent(model: EventDisplayModel, template: MessageTemplate
   }
 
   return lines.join("\n");
+}
+
+function getProgressLineTemplate(model: EventDisplayModel, template: MessageTemplate): string {
+  return model.span!.remainingDays === 1
+    ? template.expandedFinalDayProgressLine
+    : template.expandedProgressLine;
 }
 
 function renderCompactDetails(model: EventDisplayModel, template: MessageTemplate): string {
