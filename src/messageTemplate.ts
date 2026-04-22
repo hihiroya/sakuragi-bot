@@ -8,6 +8,11 @@ export type MessageTemplate = {
   birthdayHeader: string;
   agendaHeader: string;
   birthdayLine: string;
+  expandedBirthdayTitleLine: string;
+  expandedBirthdayMessageLine: string;
+  expandedBirthdayWishLine: string;
+  expandedBirthdayLocationLine: string;
+  expandedBirthdayDescriptionLine: string;
   allDayEventLine: string;
   multiDayAllDayEventLine: string;
   timedEventLine: string;
@@ -33,9 +38,14 @@ export const DEFAULT_MESSAGE_TEMPLATE: MessageTemplate = {
   greeting: "おはようございます。",
   noEventsLine: "{{date}} の予定はありません。",
   agendaLine: "{{date}} の予定です。",
-  birthdayHeader: "🎉 本日の誕生日",
+  birthdayHeader: "🎉🎂 本日の誕生日 🎂🎉",
   agendaHeader: "📅 本日の予定",
-  birthdayLine: "・🎂 {{title}}{{details}} おめでとうございます",
+  birthdayLine: "・🎂 {{name}}、お誕生日おめでとうございます！ 🎊{{details}}",
+  expandedBirthdayTitleLine: "🎂✨ {{name}} ✨🎂",
+  expandedBirthdayMessageLine: "　🎊 お誕生日おめでとうございます！",
+  expandedBirthdayWishLine: "　🎁 素敵な一年になりますように",
+  expandedBirthdayLocationLine: "　📍 {{location}}",
+  expandedBirthdayDescriptionLine: "　💬 {{description}}",
   allDayEventLine: "・📅 {{title}}{{details}}",
   multiDayAllDayEventLine: "・📅 {{title}}　📅 {{dateRange}}{{details}}",
   timedEventLine: "・🕒️ {{time}}: {{title}}{{details}}",

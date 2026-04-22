@@ -31,9 +31,14 @@ Google Calendar の当日予定を Discord webhook へ投稿する bot です。
   "greeting": "おはようございます。",
   "noEventsLine": "{{date}} の予定はありません。",
   "agendaLine": "{{date}} の予定です。",
-  "birthdayHeader": "🎉 本日の誕生日",
+  "birthdayHeader": "🎉🎂 本日の誕生日 🎂🎉",
   "agendaHeader": "📅 本日の予定",
-  "birthdayLine": "・🎂 {{title}}{{details}} おめでとうございます",
+  "birthdayLine": "・🎂 {{name}}、お誕生日おめでとうございます！ 🎊{{details}}",
+  "expandedBirthdayTitleLine": "🎂✨ {{name}} ✨🎂",
+  "expandedBirthdayMessageLine": "　🎊 お誕生日おめでとうございます！",
+  "expandedBirthdayWishLine": "　🎁 素敵な一年になりますように",
+  "expandedBirthdayLocationLine": "　📍 {{location}}",
+  "expandedBirthdayDescriptionLine": "　💬 {{description}}",
   "allDayEventLine": "・📅 {{title}}{{details}}",
   "multiDayAllDayEventLine": "・📅 {{title}}　📅 {{dateRange}}{{details}}",
   "timedEventLine": "・🕒️ {{time}}: {{title}}{{details}}",
@@ -61,7 +66,10 @@ Google Calendar の当日予定を Discord webhook へ投稿する bot です。
 | キー | placeholder |
 | --- | --- |
 | `noEventsLine`, `agendaLine` | `{{date}}` |
-| `birthdayLine` | `{{title}}`, `{{details}}` |
+| `birthdayLine` | `{{name}}`, `{{title}}`, `{{details}}` |
+| `expandedBirthdayTitleLine`, `expandedBirthdayMessageLine`, `expandedBirthdayWishLine` | `{{name}}`, `{{title}}`, `{{details}}` |
+| `expandedBirthdayLocationLine` | `{{name}}`, `{{title}}`, `{{location}}` |
+| `expandedBirthdayDescriptionLine` | `{{name}}`, `{{title}}`, `{{description}}` |
 | `allDayEventLine`, `untimedEventLine` | `{{title}}`, `{{details}}` |
 | `multiDayAllDayEventLine` | `{{title}}`, `{{dateRange}}`, `{{details}}` |
 | `timedEventLine` | `{{time}}`, `{{title}}`, `{{details}}` |
@@ -79,6 +87,7 @@ Google Calendar の当日予定を Discord webhook へ投稿する bot です。
 | `expandedDescriptionLine` | `{{description}}` |
 | `omissionLine` | `{{count}}` |
 
+誕生日予定はタイトルから `誕生日` や `Birthday` を除いた名前を `{{name}}` として使えます。誕生日予定が 1 件だけの日はカード風の複数行表示、複数件ある日は 1 件 1 行の compact 表示にします。
 通常予定が 1 件だけの日は、終日予定・時間付き予定・複数日予定を複数行の詳細表示にします。通常予定が複数件ある日は 1 予定 1 行の compact 表示にします。
 複数日の終日予定では、Google Calendar の終了日が排他的であることを考慮して、表示上の終了日は `end.date` の前日になります。進捗の残り日数は当日を含めて計算します。
 最終日は `expandedProgressLine` ではなく `expandedFinalDayProgressLine` を使うため、既定では `残り1日` ではなく `最終日` と表示します。

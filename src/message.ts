@@ -13,6 +13,8 @@ export type MessageOptions = {
   includeLocationAddress?: boolean;
 };
 
+type MessageLayout = "compact" | "expanded";
+
 /**
  * JST における今日の開始・終了時刻を返す。
  */
@@ -90,10 +92,81 @@ export function formatBirthday(
   template: MessageTemplate = DEFAULT_MESSAGE_TEMPLATE,
   options: MessageOptions = {}
 ): string {
-  return renderTemplate(template.birthdayLine, {
+  return formatBirthdayEvent(event, "compact", template, options);
+}
+
+function formatBirthdayEvent(
+  event: AgendaEvent,
+  layout: MessageLayout,
+  template: MessageTemplate,
+  options: MessageOptions
+): string {
+  const name = extractBirthdayName(event.title);
+  const values = {
     title: event.title,
+    name,
     details: appendEventDetails(event, template, options)
-  });
+  };
+
+  if (layout === "compact") {
+    return renderTemplate(template.birthdayLine, values);
+  }
+
+  const lines = [
+    renderTemplate(template.expandedBirthdayTitleLine, values),
+    renderTemplate(template.expandedBirthdayMessageLine, values),
+    renderTemplate(template.expandedBirthdayWishLine, values)
+  ];
+
+  const location = getDisplayLocation(event, options);
+  if (location) {
+    lines.push(renderTemplate(template.expandedBirthdayLocationLine, {
+      title: event.title,
+      name,
+      location
+    }));
+  }
+
+  const description = getDisplayDescription(event);
+  if (description) {
+    lines.push(renderTemplate(template.expandedBirthdayDescriptionLine, {
+      title: event.title,
+      name,
+      description
+    }));
+  }
+
+  return lines.join("\n");
+}
+
+function extractBirthdayName(title: string): string {
+  const name = title
+    .replace(/(?:の)?誕生日/g, "")
+    .replace(/\bBirthday\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return name.length > 0 ? name : title;
+}
+
+function getDisplayLocation(event: AgendaEvent, options: MessageOptions): string | undefined {
+  if (!event.location) {
+    return undefined;
+  }
+
+  return options.includeLocationAddress
+    ? event.location
+    : removeJapaneseAddressSuffix(event.location);
+}
+
+function getDisplayDescription(event: AgendaEvent): string | undefined {
+  if (!event.description) {
+    return undefined;
+  }
+
+  return event.description.length > 100
+    ? event.description.substring(0, 100) + "..."
+    : event.description;
 }
 
 /**
@@ -126,9 +199,11 @@ function buildSections(
   template: MessageTemplate,
   options: MessageOptions
 ) {
-  const birthdays = events
-    .filter(event => event.isBirthday)
-    .map(event => formatBirthday(event, template, options));
+  const birthdayEvents = events.filter(event => event.isBirthday);
+  const birthdayLayout = birthdayEvents.length === 1 ? "expanded" : "compact";
+  const birthdays = birthdayEvents.map(event =>
+    formatBirthdayEvent(event, birthdayLayout, template, options)
+  );
   const normalEvents = events.filter(event => !event.isBirthday);
   const normalLayout = normalEvents.length === 1 ? "expanded" : "compact";
   const normals = normalEvents.map(event =>
@@ -187,15 +262,13 @@ function appendEventDetails(
   options: MessageOptions
 ): string {
   let details = "";
-  if (event.location) {
-    const location = options.includeLocationAddress
-      ? event.location
-      : removeJapaneseAddressSuffix(event.location);
+  const location = getDisplayLocation(event, options);
+  if (location) {
     details += renderTemplate(template.locationDetail, { location });
   }
-  if (event.description) {
-    const comment = event.description.length > 100 ? event.description.substring(0, 100) + "..." : event.description;
-    details += renderTemplate(template.descriptionDetail, { description: comment });
+  const description = getDisplayDescription(event);
+  if (description) {
+    details += renderTemplate(template.descriptionDetail, { description });
   }
   return details;
 }

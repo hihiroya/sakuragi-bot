@@ -134,7 +134,17 @@ describe("formatBirthday", () => {
       title: "佐倉さん 誕生日",
       location: "Slack",
       isBirthday: true
-    })).toBe("・🎂 佐倉さん 誕生日 (📍: Slack) おめでとうございます");
+    })).toBe("・🎂 佐倉さん、お誕生日おめでとうございます！ 🎊 (📍: Slack)");
+  });
+
+  it("テンプレートでは誕生日を除いた名前と元タイトルのどちらも使える", () => {
+    expect(formatBirthday({
+      title: "佐倉さんの誕生日",
+      isBirthday: true
+    }, {
+      ...DEFAULT_MESSAGE_TEMPLATE,
+      birthdayLine: "{{name}} / {{title}}"
+    })).toBe("佐倉さん / 佐倉さんの誕生日");
   });
 });
 
@@ -158,10 +168,41 @@ describe("buildMessage", () => {
       { title: "練習", startDateTime: "2026-04-19T18:00:00+09:00", isBirthday: false }
     ], "2026-04-19");
 
-    expect(message).toContain("🎉 本日の誕生日");
-    expect(message).toContain("・🎂 花道 誕生日 おめでとうございます");
+    expect(message).toContain("🎉🎂 本日の誕生日 🎂🎉");
+    expect(message).toContain("🎂✨ 花道 ✨🎂");
+    expect(message).toContain("　🎊 お誕生日おめでとうございます！");
+    expect(message).toContain("　🎁 素敵な一年になりますように");
     expect(message).toContain("📅 本日の予定");
     expect(message).toContain("練習");
+  });
+
+  it("誕生日予定が複数件ある場合は名前を使った1行表示にする", () => {
+    const message = buildMessage([
+      { title: "花道 誕生日", startDate: "2026-04-01", isBirthday: true },
+      { title: "流川の誕生日", startDate: "2026-04-01", isBirthday: true }
+    ], "2026-04-01");
+
+    expect(message).toContain("・🎂 花道、お誕生日おめでとうございます！ 🎊");
+    expect(message).toContain("・🎂 流川、お誕生日おめでとうございます！ 🎊");
+    expect(message).not.toContain("🎂✨ 花道 ✨🎂");
+  });
+
+  it("誕生日予定が1件だけの場合はコメントつきでカード風に表示する", () => {
+    const message = buildMessage([{
+      title: "佐倉さん 誕生日",
+      location: "Slack",
+      description: "いつもありがとうございます",
+      isBirthday: true
+    }], "2026-04-01");
+
+    expect(message).toContain([
+      "🎉🎂 本日の誕生日 🎂🎉",
+      "🎂✨ 佐倉さん ✨🎂",
+      "　🎊 お誕生日おめでとうございます！",
+      "　🎁 素敵な一年になりますように",
+      "　📍 Slack",
+      "　💬 いつもありがとうございます"
+    ].join("\n"));
   });
 
   it("通常予定が1件だけの場合は終日予定を詳細表示する", () => {
