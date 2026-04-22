@@ -322,6 +322,24 @@ describe("buildMessage", () => {
     expect(message).toContain("・⏰ ");
   });
 
+  it("テンプレートの Markdown リスト記法に必要な半角スペースを保持する", () => {
+    const message = buildMessage([{
+      title: "チーム休暇",
+      startDate: "2026-04-22",
+      isBirthday: false
+    }], "2026-04-22", {
+      ...DEFAULT_MESSAGE_TEMPLATE,
+      agendaHeader: "### 📋 本日の予定",
+      expandedAllDayEventTitleLine: "* ⭐ {{title}}"
+    });
+
+    expect(message).toContain([
+      "### 📋 本日の予定",
+      "* ⭐ チーム休暇"
+    ].join("\n"));
+    expect(message).not.toContain("*⭐ チーム休暇");
+  });
+
   it("Discord の 2000 文字上限を超える予定は省略表示にする", () => {
     const events = Array.from({ length: 40 }, (_, index) => ({
       title: `長い予定 ${index + 1} ${"x".repeat(120)}`,

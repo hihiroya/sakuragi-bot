@@ -100,9 +100,8 @@ export function validateMessageTemplate(raw: unknown, name = "message-template.j
       throw new Error(`${name}.${key} は文字列である必要があります。`);
     }
 
-    const trimmed = trimAsciiWhitespace(value);
-    if (trimmed.length > 0) {
-      template[key] = trimmed;
+    if (!isBlankTemplateValue(value)) {
+      template[key] = value;
     }
   }
 
@@ -120,6 +119,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function trimAsciiWhitespace(value: string): string {
-  return value.replace(/^[ \t\r\n]+|[ \t\r\n]+$/g, "");
+function isBlankTemplateValue(value: string): boolean {
+  return value.replace(/[ \t\r\n]+/g, "").length === 0;
 }

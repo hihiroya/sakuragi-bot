@@ -56,18 +56,20 @@ describe("validateMessageTemplate", () => {
       unknownKey: "ignored"
     })).toEqual({
       ...DEFAULT_MESSAGE_TEMPLATE,
-      greeting: "おはようございます！"
+      greeting: " おはようございます！ "
     });
   });
 
-  it("複数行表示用テンプレートの全角スペースインデントは保持する", () => {
+  it("複数行表示用テンプレートのインデントや Markdown 用スペースは保持する", () => {
     expect(validateMessageTemplate({
+      allDayEventLine: "* ⭐ {{title}}",
       expandedProgressLine: "　⏳ {{dayIndex}}日目",
       expandedLocationLine: " 　📍 {{location}} "
     })).toEqual({
       ...DEFAULT_MESSAGE_TEMPLATE,
+      allDayEventLine: "* ⭐ {{title}}",
       expandedProgressLine: "　⏳ {{dayIndex}}日目",
-      expandedLocationLine: "　📍 {{location}}"
+      expandedLocationLine: " 　📍 {{location}} "
     });
   });
 

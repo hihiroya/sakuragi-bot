@@ -17,7 +17,7 @@
   "untimedEventLine": "* {{title}}{{details}}",
   "locationDetail": " (📍: {{location}})",
   "descriptionDetail": "(💬: {{description}})",
-  "expandedAllDayEventTitleLine": "*⭐ {{title}}",
+  "expandedAllDayEventTitleLine": "* ⭐ {{title}}",
   "expandedTimedEventTitleLine": "* ⏰ {{title}}",
   "expandedUntimedEventTitleLine": "* {{title}}",
   "expandedProgressLine": "　⏳ {{dayIndex}}日目 / 全{{totalDays}}日（残り{{remainingDays}}日）",
