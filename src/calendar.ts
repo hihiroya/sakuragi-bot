@@ -83,7 +83,9 @@ export function toAgendaEvent(event: calendar_v3.Schema$Event): AgendaEvent {
   return {
     title,
     startDate: event.start?.date ?? undefined,
+    endDate: event.end?.date ?? undefined,
     startDateTime: event.start?.dateTime ?? undefined,
+    endDateTime: event.end?.dateTime ?? undefined,
     location: event.location ?? undefined,
     description: normalizeCalendarDescription(event.description),
     isBirthday: title.includes("誕生日")

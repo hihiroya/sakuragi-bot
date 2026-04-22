@@ -56,7 +56,8 @@ describe("listAgendaEvents", () => {
                 summary: "花道 誕生日",
                 location: "体育館",
                 description: "<b>祝う</b>",
-                start: { date: "2026-04-19" }
+                start: { date: "2026-04-19" },
+                end: { date: "2026-04-20" }
               }
             ]
           }
@@ -71,7 +72,9 @@ describe("listAgendaEvents", () => {
       {
         title: "花道 誕生日",
         startDate: "2026-04-19",
+        endDate: "2026-04-20",
         startDateTime: undefined,
+        endDateTime: undefined,
         location: "体育館",
         description: "祝う",
         isBirthday: true
@@ -117,7 +120,9 @@ describe("toAgendaEvent", () => {
     expect(toAgendaEvent({})).toEqual({
       title: "無題",
       startDate: undefined,
+      endDate: undefined,
       startDateTime: undefined,
+      endDateTime: undefined,
       location: undefined,
       description: undefined,
       isBirthday: false
@@ -131,7 +136,9 @@ describe("toAgendaEvent", () => {
     })).toEqual({
       title: "佐倉さん 誕生日",
       startDate: undefined,
+      endDate: undefined,
       startDateTime: "2026-04-19T09:30:00+09:00",
+      endDateTime: undefined,
       location: undefined,
       description: undefined,
       isBirthday: true

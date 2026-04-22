@@ -1,4 +1,5 @@
 import type { AgendaEvent, TodayRange } from "./domain.js";
+import { formatAgendaEvent, removeJapaneseAddressSuffix } from "./eventFormat.js";
 import {
   DEFAULT_MESSAGE_TEMPLATE,
   renderTemplate,
@@ -55,16 +56,6 @@ export function getDateRange(dateLabel: string): TodayRange {
   };
 }
 
-const formatter = new Intl.DateTimeFormat("ja-JP", {
-  timeZone: TZ,
-  month: "2-digit",
-  day: "2-digit",
-  weekday: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false
-});
-
 function getJstDateParts(date: Date) {
   const fmt = new Intl.DateTimeFormat("en-CA", {
     timeZone: TZ,
@@ -88,26 +79,7 @@ export function formatEvent(
   template: MessageTemplate = DEFAULT_MESSAGE_TEMPLATE,
   options: MessageOptions = {}
 ): string {
-  const details = appendEventDetails(event, template, options);
-
-  if (event.startDate) {
-    return renderTemplate(template.allDayEventLine, {
-      title: event.title,
-      details
-    });
-  }
-  if (event.startDateTime) {
-    const t = formatter.format(new Date(event.startDateTime));
-    return renderTemplate(template.timedEventLine, {
-      title: event.title,
-      details,
-      time: t
-    });
-  }
-  return renderTemplate(template.untimedEventLine, {
-    title: event.title,
-    details
-  });
+  return formatAgendaEvent(event, { template, options });
 }
 
 /**
@@ -145,16 +117,28 @@ export function buildMessage(
     renderTemplate(template.agendaLine, { date: label })
   ];
 
-  return buildLimitedMessage(baseLines, buildSections(events, template, options), template);
+  return buildLimitedMessage(baseLines, buildSections(events, label, template, options), template);
 }
 
-function buildSections(events: AgendaEvent[], template: MessageTemplate, options: MessageOptions) {
+function buildSections(
+  events: AgendaEvent[],
+  label: string,
+  template: MessageTemplate,
+  options: MessageOptions
+) {
   const birthdays = events
     .filter(event => event.isBirthday)
     .map(event => formatBirthday(event, template, options));
-  const normals = events
-    .filter(event => !event.isBirthday)
-    .map(event => formatEvent(event, template, options));
+  const normalEvents = events.filter(event => !event.isBirthday);
+  const normalLayout = normalEvents.length === 1 ? "expanded" : "compact";
+  const normals = normalEvents.map(event =>
+    formatAgendaEvent(event, {
+      dateLabel: label,
+      layout: normalLayout,
+      template,
+      options
+    })
+  );
 
   return [
     { header: template.birthdayHeader, lines: birthdays },
@@ -246,74 +230,4 @@ function buildOmissionLine(count: number, template: MessageTemplate): string {
   return renderTemplate(template.omissionLine, { count });
 }
 
-export function removeJapaneseAddressSuffix(location: string): string {
-  for (const separator of location.matchAll(/[,，]/g)) {
-    const suffix = location.slice(separator.index + separator[0].length).trim();
-    const place = location.slice(0, separator.index).trim();
-    if (place && isJapaneseAddressSuffix(suffix)) {
-      return place;
-    }
-  }
-  return location;
-}
-
-const JAPANESE_PREFECTURES = [
-  "北海道",
-  "青森県",
-  "岩手県",
-  "宮城県",
-  "秋田県",
-  "山形県",
-  "福島県",
-  "茨城県",
-  "栃木県",
-  "群馬県",
-  "埼玉県",
-  "千葉県",
-  "東京都",
-  "神奈川県",
-  "新潟県",
-  "富山県",
-  "石川県",
-  "福井県",
-  "山梨県",
-  "長野県",
-  "岐阜県",
-  "静岡県",
-  "愛知県",
-  "三重県",
-  "滋賀県",
-  "京都府",
-  "大阪府",
-  "兵庫県",
-  "奈良県",
-  "和歌山県",
-  "鳥取県",
-  "島根県",
-  "岡山県",
-  "広島県",
-  "山口県",
-  "徳島県",
-  "香川県",
-  "愛媛県",
-  "高知県",
-  "福岡県",
-  "佐賀県",
-  "長崎県",
-  "熊本県",
-  "大分県",
-  "宮崎県",
-  "鹿児島県",
-  "沖縄県"
-];
-
-const POSTAL_CODE_PATTERN = /^(?:日本[、，]?\s*〒?\d{3}-?\d{4}|〒\d{3}-?\d{4})/;
-
-function isJapaneseAddressSuffix(value: string): boolean {
-  if (POSTAL_CODE_PATTERN.test(value)) {
-    return true;
-  }
-
-  const withoutCountry = value.replace(/^日本[、，]?\s*/, "");
-  return JAPANESE_PREFECTURES.some(prefecture => withoutCountry.startsWith(prefecture));
-}
+export { removeJapaneseAddressSuffix } from "./eventFormat.js";

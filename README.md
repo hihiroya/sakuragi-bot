@@ -35,10 +35,22 @@ Google Calendar の当日予定を Discord webhook へ投稿する bot です。
   "agendaHeader": "📅 本日の予定",
   "birthdayLine": "・🎂 {{title}}{{details}} おめでとうございます",
   "allDayEventLine": "・📅 {{title}}{{details}}",
+  "multiDayAllDayEventLine": "・📅 {{title}}　📅 {{dateRange}}{{details}}",
   "timedEventLine": "・🕒️ {{time}}: {{title}}{{details}}",
+  "multiDayTimedEventLine": "・🕒️ {{dateTimeRange}}: {{title}}{{details}}",
   "untimedEventLine": "・{{title}}{{details}}",
   "locationDetail": " (📍: {{location}})",
   "descriptionDetail": " (💬: {{description}})",
+  "expandedAllDayEventTitleLine": "・📅 {{title}}",
+  "expandedTimedEventTitleLine": "・🕒️ {{title}}",
+  "expandedUntimedEventTitleLine": "・{{title}}",
+  "expandedProgressLine": "　⏳ {{dayIndex}}日目 / 全{{totalDays}}日（残り{{remainingDays}}日）",
+  "expandedDateLine": "　📅 {{date}}",
+  "expandedDateRangeLine": "　📅 {{dateRange}}",
+  "expandedTimeLine": "　🕒 {{time}}",
+  "expandedDateTimeRangeLine": "　📅 {{dateTimeRange}}",
+  "expandedLocationLine": "　📍 {{location}}",
+  "expandedDescriptionLine": "　💬 {{description}}",
   "omissionLine": "...他 {{count}} 件の予定があります"
 }
 ```
@@ -50,10 +62,23 @@ Google Calendar の当日予定を Discord webhook へ投稿する bot です。
 | `noEventsLine`, `agendaLine` | `{{date}}` |
 | `birthdayLine` | `{{title}}`, `{{details}}` |
 | `allDayEventLine`, `untimedEventLine` | `{{title}}`, `{{details}}` |
+| `multiDayAllDayEventLine` | `{{title}}`, `{{dateRange}}`, `{{details}}` |
 | `timedEventLine` | `{{time}}`, `{{title}}`, `{{details}}` |
+| `multiDayTimedEventLine` | `{{dateTimeRange}}`, `{{title}}`, `{{details}}` |
 | `locationDetail` | `{{location}}` |
 | `descriptionDetail` | `{{description}}` |
+| `expandedAllDayEventTitleLine`, `expandedTimedEventTitleLine`, `expandedUntimedEventTitleLine` | `{{title}}` |
+| `expandedProgressLine` | `{{dayIndex}}`, `{{totalDays}}`, `{{remainingDays}}` |
+| `expandedDateLine` | `{{date}}` |
+| `expandedDateRangeLine` | `{{dateRange}}` |
+| `expandedTimeLine` | `{{time}}` |
+| `expandedDateTimeRangeLine` | `{{dateTimeRange}}` |
+| `expandedLocationLine` | `{{location}}` |
+| `expandedDescriptionLine` | `{{description}}` |
 | `omissionLine` | `{{count}}` |
+
+通常予定が 1 件だけの日は、終日予定・時間付き予定・複数日予定を複数行の詳細表示にします。通常予定が複数件ある日は 1 予定 1 行の compact 表示にします。
+複数日の終日予定では、Google Calendar の終了日が排他的であることを考慮して、表示上の終了日は `end.date` の前日になります。進捗の残り日数は当日を含めて計算します。
 
 ## Google Calendar の共有手順
 
@@ -120,6 +145,7 @@ npm start -- --dry-run --date 2026-04-22
 | `src/calendar.ts` | Google Calendar API との接続と、Google 型から内部予定型への変換。 |
 | `src/dependencies.ts` | 日次処理へ注入する依存関係の型定義。 |
 | `src/domain.ts` | アプリ内部で使う予定型などのドメイン型。 |
+| `src/eventFormat.ts` | 予定 1 件の種別判定、日数計算、compact/expanded 表示。 |
 | `src/message.ts` | Discord 投稿本文の生成。 |
 | `src/messageTemplate.ts` | 投稿文テンプレートの読み込み・検証・placeholder 置換。 |
 | `src/discord.ts` | Discord webhook 投稿と retry 制御。 |

@@ -164,6 +164,87 @@ describe("buildMessage", () => {
     expect(message).toContain("練習");
   });
 
+  it("通常予定が1件だけの場合は終日予定を詳細表示する", () => {
+    expect(buildMessage([{
+      title: "チーム休暇",
+      startDate: "2026-04-22",
+      endDate: "2026-04-23",
+      location: "自宅",
+      description: "有給",
+      isBirthday: false
+    }], "2026-04-22")).toContain([
+      "📅 本日の予定",
+      "・📅 チーム休暇",
+      "　📅 4/22",
+      "　📍 自宅",
+      "　💬 有給"
+    ].join("\n"));
+  });
+
+  it("通常予定が1件だけの場合は時間付き予定を詳細表示する", () => {
+    expect(buildMessage([{
+      title: "朝会",
+      startDateTime: "2026-04-22T09:30:00+09:00",
+      location: "会議室A",
+      isBirthday: false
+    }], "2026-04-22")).toContain([
+      "📅 本日の予定",
+      "・🕒️ 朝会",
+      "　🕒 09:30",
+      "　📍 会議室A"
+    ].join("\n"));
+  });
+
+  it("通常予定が1件だけの場合は複数日終日予定の進捗と期間を詳細表示する", () => {
+    const message = buildMessage([{
+      title: "アニメイトカフェコラボ",
+      startDate: "2026-04-03",
+      endDate: "2026-04-27",
+      location: "アニメイトカフェスタンド池袋4号店",
+      description: "https://www.animatecafe.jp/event/ac000755",
+      isBirthday: false
+    }], "2026-04-22");
+
+    expect(message).toContain([
+      "・📅 アニメイトカフェコラボ",
+      "　⏳ 20日目 / 全24日（残り5日）",
+      "　📅 4/3〜4/26",
+      "　📍 アニメイトカフェスタンド池袋4号店",
+      "　💬 https://www.animatecafe.jp/event/ac000755"
+    ].join("\n"));
+  });
+
+  it("通常予定が複数件ある場合は複数日終日予定を1行表示する", () => {
+    const message = buildMessage([
+      {
+        title: "アニメイトカフェコラボ",
+        startDate: "2026-04-03",
+        endDate: "2026-04-27",
+        location: "アニメイトカフェスタンド池袋4号店",
+        description: "https://www.animatecafe.jp/event/ac000755",
+        isBirthday: false
+      },
+      {
+        title: "朝会",
+        startDateTime: "2026-04-22T09:30:00+09:00",
+        isBirthday: false
+      }
+    ], "2026-04-22", {
+      ...DEFAULT_MESSAGE_TEMPLATE,
+      agendaHeader: "📋 本日の予定",
+      allDayEventLine: "・⭐ {{title}}{{details}}",
+      multiDayAllDayEventLine: "・⭐ {{title}}　📅 {{dateRange}}{{details}}",
+      timedEventLine: "・⏰ {{time}}: {{title}}{{details}}",
+      descriptionDetail: "(💬: {{description}})"
+    });
+
+    expect(message).toContain("📋 本日の予定");
+    expect(message).toContain(
+      "・⭐ アニメイトカフェコラボ　📅 4/3〜4/26 (📍: アニメイトカフェスタンド池袋4号店)(💬: https://www.animatecafe.jp/event/ac000755)"
+    );
+    expect(message).toContain("・⏰ ");
+  });
+
   it("Discord の 2000 文字上限を超える予定は省略表示にする", () => {
     const events = Array.from({ length: 40 }, (_, index) => ({
       title: `長い予定 ${index + 1} ${"x".repeat(120)}`,

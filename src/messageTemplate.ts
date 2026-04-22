@@ -9,10 +9,22 @@ export type MessageTemplate = {
   agendaHeader: string;
   birthdayLine: string;
   allDayEventLine: string;
+  multiDayAllDayEventLine: string;
   timedEventLine: string;
+  multiDayTimedEventLine: string;
   untimedEventLine: string;
   locationDetail: string;
   descriptionDetail: string;
+  expandedAllDayEventTitleLine: string;
+  expandedTimedEventTitleLine: string;
+  expandedUntimedEventTitleLine: string;
+  expandedProgressLine: string;
+  expandedDateLine: string;
+  expandedDateRangeLine: string;
+  expandedTimeLine: string;
+  expandedDateTimeRangeLine: string;
+  expandedLocationLine: string;
+  expandedDescriptionLine: string;
   omissionLine: string;
 };
 
@@ -24,10 +36,22 @@ export const DEFAULT_MESSAGE_TEMPLATE: MessageTemplate = {
   agendaHeader: "📅 本日の予定",
   birthdayLine: "・🎂 {{title}}{{details}} おめでとうございます",
   allDayEventLine: "・📅 {{title}}{{details}}",
+  multiDayAllDayEventLine: "・📅 {{title}}　📅 {{dateRange}}{{details}}",
   timedEventLine: "・🕒️ {{time}}: {{title}}{{details}}",
+  multiDayTimedEventLine: "・🕒️ {{dateTimeRange}}: {{title}}{{details}}",
   untimedEventLine: "・{{title}}{{details}}",
   locationDetail: " (📍: {{location}})",
   descriptionDetail: " (💬: {{description}})",
+  expandedAllDayEventTitleLine: "・📅 {{title}}",
+  expandedTimedEventTitleLine: "・🕒️ {{title}}",
+  expandedUntimedEventTitleLine: "・{{title}}",
+  expandedProgressLine: "　⏳ {{dayIndex}}日目 / 全{{totalDays}}日（残り{{remainingDays}}日）",
+  expandedDateLine: "　📅 {{date}}",
+  expandedDateRangeLine: "　📅 {{dateRange}}",
+  expandedTimeLine: "　🕒 {{time}}",
+  expandedDateTimeRangeLine: "　📅 {{dateTimeRange}}",
+  expandedLocationLine: "　📍 {{location}}",
+  expandedDescriptionLine: "　💬 {{description}}",
   omissionLine: "...他 {{count}} 件の予定があります"
 };
 

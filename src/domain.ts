@@ -7,7 +7,9 @@
 export type AgendaEvent = {
   title: string;
   startDate?: string;
+  endDate?: string;
   startDateTime?: string;
+  endDateTime?: string;
   location?: string;
   description?: string;
   isBirthday: boolean;
