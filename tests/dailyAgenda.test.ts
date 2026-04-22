@@ -74,7 +74,9 @@ describe("runDailyAgenda", () => {
       label: "2026-04-19"
     });
     expect(loadMessageTemplateFn).toHaveBeenCalledWith("./custom-template.json");
-    expect(buildMessageFn).toHaveBeenCalledWith(events, "2026-04-19", messageTemplate);
+    expect(buildMessageFn).toHaveBeenCalledWith(events, "2026-04-19", messageTemplate, {
+      includeLocationAddress: false
+    });
     expect(discordClient.post).toHaveBeenCalledWith("投稿本文");
     expect(logger.info).toHaveBeenCalledWith("Posted: 2026-04-19 (2 events)");
   });
@@ -197,7 +199,9 @@ describe("runDailyAgenda", () => {
       buildMessageFn
     });
 
-    expect(buildMessageFn).toHaveBeenCalledWith([], "2026-04-19", DEFAULT_MESSAGE_TEMPLATE);
+    expect(buildMessageFn).toHaveBeenCalledWith([], "2026-04-19", DEFAULT_MESSAGE_TEMPLATE, {
+      includeLocationAddress: false
+    });
     expect(discordClient.post).toHaveBeenCalledWith("予定なし本文");
     expect(logger.info).toHaveBeenCalledWith("Posted: 2026-04-19 (0 events)");
   });
@@ -277,6 +281,11 @@ describe("runDailyAgenda", () => {
     });
 
     expect(buildMessageFn).toHaveBeenCalledOnce();
+    expect(buildMessageFn).toHaveBeenCalledWith([
+      { title: "朝会", isBirthday: false }
+    ], "2026-04-19", DEFAULT_MESSAGE_TEMPLATE, {
+      includeLocationAddress: false
+    });
     expect(createDiscordClientFn).not.toHaveBeenCalled();
     expect(logger.info).toHaveBeenCalledWith(
       [
@@ -288,6 +297,48 @@ describe("runDailyAgenda", () => {
         "投稿予定本文"
       ].join("\n")
     );
+  });
+
+  it("includeLocationAddress 設定を本文生成へ渡す", async () => {
+    const logger = createLogger();
+    const calendar: CalendarClient = {
+      events: {
+        list: vi.fn(async () => ({ data: { items: [] } }))
+      }
+    };
+    const buildMessageFn = vi.fn(() => "投稿本文");
+    const discordClient = { post: vi.fn(async () => undefined) };
+
+    await runDailyAgenda({
+      env: {
+        GOOGLE_SERVICE_ACCOUNT_JSON: JSON.stringify({
+          client_email: "bot@example.com",
+          private_key: "secret"
+        }),
+        GOOGLE_CALENDAR_ID: "calendar-id",
+        DISCORD_WEBHOOK_URL: "https://discord.com/api/webhooks/test"
+      },
+      logger,
+      loadConfigFn: () => ({ includeLocationAddress: true }),
+      createCalendarClient: () => calendar,
+      listEventsFn: vi.fn(async () => [
+        { title: "住所付き予定", isBirthday: false }
+      ]),
+      createDiscordClientFn: () => discordClient,
+      getTodayRangeFn: () => ({
+        label: "2026-04-19",
+        timeMin: "2026-04-18T15:00:00.000Z",
+        timeMax: "2026-04-19T15:00:00.000Z"
+      }),
+      loadMessageTemplateFn: () => DEFAULT_MESSAGE_TEMPLATE,
+      buildMessageFn
+    });
+
+    expect(buildMessageFn).toHaveBeenCalledWith([
+      { title: "住所付き予定", isBirthday: false }
+    ], "2026-04-19", DEFAULT_MESSAGE_TEMPLATE, {
+      includeLocationAddress: true
+    });
   });
 
   it("既定の config 読み込みで config.json が壊れていても環境変数だけで実行できる", async () => {

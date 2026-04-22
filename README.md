@@ -14,11 +14,13 @@ Google Calendar の当日予定を Discord webhook へ投稿する bot です。
 | `GOOGLE_SERVICE_ACCOUNT_PATH` | `googleServiceAccountPath` | Google サービスアカウント JSON ファイルのパス |
 | `MESSAGE_TEMPLATE_PATH` | `messageTemplatePath` | 投稿文テンプレート JSON ファイルのパス |
 | `POST_WHEN_NO_EVENTS` | `postWhenNoEvents` | 予定がない日も Discord へ投稿するか |
+| `INCLUDE_LOCATION_ADDRESS` | `includeLocationAddress` | 場所に含まれる日本の住所も Discord へ投稿するか |
 
 `GOOGLE_SERVICE_ACCOUNT_JSON` が JSON 文字列として設定されている場合は、ファイルパスより優先されます。
 `config.json` は JSON object として読み込み、既知の設定キーは文字列であることを検証します。前後の空白は取り除き、空白だけの値は未設定として扱います。未知のキーは無視されます。
 `MESSAGE_TEMPLATE_PATH` が未設定の場合は、リポジトリ直下の `message-template.json` を読み込みます。テンプレートファイルがない、または読み込みに失敗した場合は既定文言で投稿します。
 `postWhenNoEvents` のデフォルトは `false` です。予定がない日は投稿せず、ログに `Skipped: YYYY-MM-DD (0 events)` を出します。予定なしの日も投稿したい場合は `config.json` で `true`、または環境変数 `POST_WHEN_NO_EVENTS=true` を設定してください。
+`includeLocationAddress` のデフォルトは `false` です。Google Calendar の場所が `施設名, 日本、〒170-0013 東京都...` のような形式の場合、既定では住所部分を除いて施設名だけを投稿します。住所も投稿したい場合は `config.json` で `true`、または環境変数 `INCLUDE_LOCATION_ADDRESS=true` を設定してください。
 
 ## 投稿文テンプレート
 
@@ -133,6 +135,8 @@ Discord webhook の `content` は 2000 文字までです。
 通常予定だけでなく誕生日予定が多い場合も同じ上限を守ります。省略表示を追加する余白が足りない場合は、最後に含めた予定を削って省略表示を優先します。
 
 予定の `description` は 1 件あたり 100 文字を超えると `...` 付きで省略します。
+
+予定の `location` に日本の住所が含まれる場合、既定では住所部分を表示しません。削除対象は `,` または `，` の後ろが `日本、〒123-4567`、`〒123-4567`、`東京都...` など住所と判断できる場合だけです。`Zoom, 第2会議室` のように住所と判断できない場所補足はそのまま表示します。
 
 Google Calendar の説明文に含まれる HTML は投稿前にプレーンテキストへ整形します。`&amp;` などの HTML entity は復号し、HTML タグは除去します。
 また、説明文内に `https://www.google.com/url?q=...` 形式の Google リダイレクト URL が含まれる場合は、`q` パラメータの元 URL へ正規化します。

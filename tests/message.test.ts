@@ -65,6 +65,53 @@ describe("formatEvent", () => {
     expect(line).toMatch(/09:30/);
   });
 
+  it("既定では Google Calendar が場所に付けた日本の住所を表示しない", () => {
+    const line = formatEvent({
+      title: "カフェコラボ",
+      location: "アニメイトカフェスタンド池袋4号店, 日本、〒170-0013 東京都豊島区東池袋１丁目２３−５ オトメイトビル 1F",
+      startDate: "2026-04-22",
+      isBirthday: false
+    });
+
+    expect(line).toContain("(📍: アニメイトカフェスタンド池袋4号店)");
+    expect(line).not.toContain("〒170-0013");
+    expect(line).not.toContain("東京都豊島区");
+  });
+
+  it("郵便番号がない都道府県形式の住所も表示しない", () => {
+    const line = formatEvent({
+      title: "イベント",
+      location: "イベントホール，東京都千代田区丸の内１丁目",
+      startDate: "2026-04-22",
+      isBirthday: false
+    });
+
+    expect(line).toContain("(📍: イベントホール)");
+    expect(line).not.toContain("東京都千代田区");
+  });
+
+  it("includeLocationAddress が true の場合は場所の住所をそのまま表示する", () => {
+    const line = formatEvent({
+      title: "カフェコラボ",
+      location: "アニメイトカフェスタンド池袋4号店, 日本、〒170-0013 東京都豊島区東池袋１丁目２３−５",
+      startDate: "2026-04-22",
+      isBirthday: false
+    }, DEFAULT_MESSAGE_TEMPLATE, { includeLocationAddress: true });
+
+    expect(line).toContain("アニメイトカフェスタンド池袋4号店, 日本、〒170-0013 東京都豊島区東池袋１丁目２３−５");
+  });
+
+  it("住所と判定できないカンマ区切りの場所補足は消さない", () => {
+    const line = formatEvent({
+      title: "打ち合わせ",
+      location: "Zoom, 第2会議室",
+      startDateTime: "2026-04-19T09:30:00+09:00",
+      isBirthday: false
+    });
+
+    expect(line).toContain("(📍: Zoom, 第2会議室)");
+  });
+
   it("テンプレートで通常予定の行を差し替えられる", () => {
     expect(formatEvent({
       title: "朝会",

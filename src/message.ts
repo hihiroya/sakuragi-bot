@@ -8,6 +8,10 @@ import {
 export const TZ = "Asia/Tokyo";
 export const MAX_DISCORD_CONTENT = 2000;
 
+export type MessageOptions = {
+  includeLocationAddress?: boolean;
+};
+
 /**
  * JST における今日の開始・終了時刻を返す。
  */
@@ -81,9 +85,10 @@ function getJstDateParts(date: Date) {
  */
 export function formatEvent(
   event: AgendaEvent,
-  template: MessageTemplate = DEFAULT_MESSAGE_TEMPLATE
+  template: MessageTemplate = DEFAULT_MESSAGE_TEMPLATE,
+  options: MessageOptions = {}
 ): string {
-  const details = appendEventDetails(event, template);
+  const details = appendEventDetails(event, template, options);
 
   if (event.startDate) {
     return renderTemplate(template.allDayEventLine, {
@@ -110,11 +115,12 @@ export function formatEvent(
  */
 export function formatBirthday(
   event: AgendaEvent,
-  template: MessageTemplate = DEFAULT_MESSAGE_TEMPLATE
+  template: MessageTemplate = DEFAULT_MESSAGE_TEMPLATE,
+  options: MessageOptions = {}
 ): string {
   return renderTemplate(template.birthdayLine, {
     title: event.title,
-    details: appendEventDetails(event, template)
+    details: appendEventDetails(event, template, options)
   });
 }
 
@@ -124,7 +130,8 @@ export function formatBirthday(
 export function buildMessage(
   events: AgendaEvent[],
   label: string,
-  template: MessageTemplate = DEFAULT_MESSAGE_TEMPLATE
+  template: MessageTemplate = DEFAULT_MESSAGE_TEMPLATE,
+  options: MessageOptions = {}
 ): string {
   if (events.length === 0) {
     return [
@@ -138,16 +145,16 @@ export function buildMessage(
     renderTemplate(template.agendaLine, { date: label })
   ];
 
-  return buildLimitedMessage(baseLines, buildSections(events, template), template);
+  return buildLimitedMessage(baseLines, buildSections(events, template, options), template);
 }
 
-function buildSections(events: AgendaEvent[], template: MessageTemplate) {
+function buildSections(events: AgendaEvent[], template: MessageTemplate, options: MessageOptions) {
   const birthdays = events
     .filter(event => event.isBirthday)
-    .map(event => formatBirthday(event, template));
+    .map(event => formatBirthday(event, template, options));
   const normals = events
     .filter(event => !event.isBirthday)
-    .map(event => formatEvent(event, template));
+    .map(event => formatEvent(event, template, options));
 
   return [
     { header: template.birthdayHeader, lines: birthdays },
@@ -190,10 +197,17 @@ function buildLimitedMessage(
   return outputLines.join("\n");
 }
 
-function appendEventDetails(event: AgendaEvent, template: MessageTemplate): string {
+function appendEventDetails(
+  event: AgendaEvent,
+  template: MessageTemplate,
+  options: MessageOptions
+): string {
   let details = "";
   if (event.location) {
-    details += renderTemplate(template.locationDetail, { location: event.location });
+    const location = options.includeLocationAddress
+      ? event.location
+      : removeJapaneseAddressSuffix(event.location);
+    details += renderTemplate(template.locationDetail, { location });
   }
   if (event.description) {
     const comment = event.description.length > 100 ? event.description.substring(0, 100) + "..." : event.description;
@@ -230,4 +244,76 @@ function canAppend(lines: string[], nextLines: string[]): boolean {
 
 function buildOmissionLine(count: number, template: MessageTemplate): string {
   return renderTemplate(template.omissionLine, { count });
+}
+
+export function removeJapaneseAddressSuffix(location: string): string {
+  for (const separator of location.matchAll(/[,，]/g)) {
+    const suffix = location.slice(separator.index + separator[0].length).trim();
+    const place = location.slice(0, separator.index).trim();
+    if (place && isJapaneseAddressSuffix(suffix)) {
+      return place;
+    }
+  }
+  return location;
+}
+
+const JAPANESE_PREFECTURES = [
+  "北海道",
+  "青森県",
+  "岩手県",
+  "宮城県",
+  "秋田県",
+  "山形県",
+  "福島県",
+  "茨城県",
+  "栃木県",
+  "群馬県",
+  "埼玉県",
+  "千葉県",
+  "東京都",
+  "神奈川県",
+  "新潟県",
+  "富山県",
+  "石川県",
+  "福井県",
+  "山梨県",
+  "長野県",
+  "岐阜県",
+  "静岡県",
+  "愛知県",
+  "三重県",
+  "滋賀県",
+  "京都府",
+  "大阪府",
+  "兵庫県",
+  "奈良県",
+  "和歌山県",
+  "鳥取県",
+  "島根県",
+  "岡山県",
+  "広島県",
+  "山口県",
+  "徳島県",
+  "香川県",
+  "愛媛県",
+  "高知県",
+  "福岡県",
+  "佐賀県",
+  "長崎県",
+  "熊本県",
+  "大分県",
+  "宮崎県",
+  "鹿児島県",
+  "沖縄県"
+];
+
+const POSTAL_CODE_PATTERN = /^(?:日本[、，]?\s*〒?\d{3}-?\d{4}|〒\d{3}-?\d{4})/;
+
+function isJapaneseAddressSuffix(value: string): boolean {
+  if (POSTAL_CODE_PATTERN.test(value)) {
+    return true;
+  }
+
+  const withoutCountry = value.replace(/^日本[、，]?\s*/, "");
+  return JAPANESE_PREFECTURES.some(prefecture => withoutCountry.startsWith(prefecture));
 }

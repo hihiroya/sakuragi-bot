@@ -62,7 +62,9 @@ export async function runDailyAgenda({
   }
 
   const messageTemplate = loadMessageTemplateFn(runtimeConfig.messageTemplatePath);
-  const msg = buildMessageFn(events, label, messageTemplate);
+  const msg = buildMessageFn(events, label, messageTemplate, {
+    includeLocationAddress: runtimeConfig.includeLocationAddress
+  });
 
   if (dryRun) {
     appLogger.info([

@@ -32,6 +32,7 @@ describe("loadConfig", () => {
         discordWebhookUrl: "https://example.com/hook",
         messageTemplatePath: " ./message-template.json ",
         postWhenNoEvents: true,
+        includeLocationAddress: true,
         memo: "unknown keys are ignored"
       }))
     };
@@ -40,7 +41,8 @@ describe("loadConfig", () => {
       googleCalendarId: "calendar-id",
       discordWebhookUrl: "https://example.com/hook",
       messageTemplatePath: "./message-template.json",
-      postWhenNoEvents: true
+      postWhenNoEvents: true,
+      includeLocationAddress: true
     });
   });
 
@@ -64,13 +66,15 @@ describe("validateAppConfig", () => {
       googleServiceAccountPath: " ./service-account.json ",
       messageTemplatePath: " ./message-template.json ",
       postWhenNoEvents: true,
+      includeLocationAddress: true,
       unknownKey: "ignored"
     })).toEqual({
       googleCalendarId: "calendar-id",
       discordWebhookUrl: "https://example.com/webhook",
       googleServiceAccountPath: "./service-account.json",
       messageTemplatePath: "./message-template.json",
-      postWhenNoEvents: true
+      postWhenNoEvents: true,
+      includeLocationAddress: true
     });
   });
 
@@ -96,6 +100,12 @@ describe("validateAppConfig", () => {
     expect(() => validateAppConfig({
       postWhenNoEvents: "true"
     })).toThrow("config.postWhenNoEvents は boolean である必要があります。");
+  });
+
+  it("includeLocationAddress が boolean ではない場合はエラーを投げる", () => {
+    expect(() => validateAppConfig({
+      includeLocationAddress: "true"
+    })).toThrow("config.includeLocationAddress は boolean である必要があります。");
   });
 });
 
@@ -140,6 +150,13 @@ describe("設定値の取得", () => {
       env: { POST_WHEN_NO_EVENTS: "false" },
       config: { postWhenNoEvents: true }
     })).toBe(false);
+  });
+
+  it("includeLocationAddress も boolean 設定として解釈する", () => {
+    expect(getBooleanConfigValue("INCLUDE_LOCATION_ADDRESS", "includeLocationAddress", {
+      env: { INCLUDE_LOCATION_ADDRESS: "true" },
+      config: { includeLocationAddress: false }
+    })).toBe(true);
   });
 
   it("boolean 環境変数の true/false 表現を解釈する", () => {
@@ -228,7 +245,8 @@ describe("resolveRuntimeConfig", () => {
         GOOGLE_CALENDAR_ID: "calendar-id",
         DISCORD_WEBHOOK_URL: "https://discord.com/api/webhooks/test",
         MESSAGE_TEMPLATE_PATH: "./message-template.json",
-        POST_WHEN_NO_EVENTS: "true"
+        POST_WHEN_NO_EVENTS: "true",
+        INCLUDE_LOCATION_ADDRESS: "true"
       },
       config: {}
     })).toEqual({
@@ -239,12 +257,13 @@ describe("resolveRuntimeConfig", () => {
         privateKey: "secret"
       },
       messageTemplatePath: "./message-template.json",
-      postWhenNoEvents: true
+      postWhenNoEvents: true,
+      includeLocationAddress: true
     });
   });
 
-  it("postWhenNoEvents は未設定の場合 false になる", () => {
-    expect(resolveRuntimeConfig({
+  it("boolean 設定は未設定の場合 false になる", () => {
+    const config = resolveRuntimeConfig({
       env: {
         GOOGLE_SERVICE_ACCOUNT_JSON: JSON.stringify({
           client_email: "bot@example.com",
@@ -254,7 +273,10 @@ describe("resolveRuntimeConfig", () => {
         DISCORD_WEBHOOK_URL: "https://discord.com/api/webhooks/test"
       },
       config: {}
-    }).postWhenNoEvents).toBe(false);
+    });
+
+    expect(config.postWhenNoEvents).toBe(false);
+    expect(config.includeLocationAddress).toBe(false);
   });
 });
 

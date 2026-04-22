@@ -7,6 +7,7 @@ export type AppConfig = {
   googleServiceAccountPath?: string;
   messageTemplatePath?: string;
   postWhenNoEvents?: boolean;
+  includeLocationAddress?: boolean;
 };
 
 export type ConfigSource = {
@@ -25,16 +26,25 @@ export type RuntimeConfig = {
   googleServiceAccount: ServiceAccountCredentials;
   messageTemplatePath?: string;
   postWhenNoEvents: boolean;
+  includeLocationAddress: boolean;
 };
 
 type ConfigFieldDefinition = {
   envName: string;
-  configKey: Exclude<keyof AppConfig, "postWhenNoEvents">;
+  configKey: StringConfigKey;
 };
+
+type StringConfigKey = Exclude<keyof AppConfig, BooleanConfigKey>;
+type BooleanConfigKey = "postWhenNoEvents" | "includeLocationAddress";
 
 export const POST_WHEN_NO_EVENTS_FIELD = {
   envName: "POST_WHEN_NO_EVENTS",
   configKey: "postWhenNoEvents"
+} as const;
+
+export const INCLUDE_LOCATION_ADDRESS_FIELD = {
+  envName: "INCLUDE_LOCATION_ADDRESS",
+  configKey: "includeLocationAddress"
 } as const;
 
 export const CONFIG_FIELDS = {
@@ -54,7 +64,7 @@ export const CONFIG_FIELDS = {
     envName: "MESSAGE_TEMPLATE_PATH",
     configKey: "messageTemplatePath"
   }
-} as const satisfies Record<Exclude<keyof AppConfig, "postWhenNoEvents">, ConfigFieldDefinition>;
+} as const satisfies Record<StringConfigKey, ConfigFieldDefinition>;
 
 /**
  * config.json を読み込む。
@@ -106,12 +116,19 @@ export function validateAppConfig(raw: unknown, name = "config.json"): AppConfig
   if (postWhenNoEvents !== undefined) {
     config.postWhenNoEvents = postWhenNoEvents;
   }
+  const includeLocationAddress = normalizeOptionalBoolean(
+    raw[INCLUDE_LOCATION_ADDRESS_FIELD.configKey],
+    `config.${INCLUDE_LOCATION_ADDRESS_FIELD.configKey}`
+  );
+  if (includeLocationAddress !== undefined) {
+    config.includeLocationAddress = includeLocationAddress;
+  }
   return config;
 }
 
 export function getConfigValue(
   envName: string,
-  configKey: keyof AppConfig,
+  configKey: StringConfigKey,
   source: ConfigSource
 ): string | undefined {
   const envValue = normalizeOptionalString(source.env?.[envName], envName);
@@ -161,6 +178,11 @@ export function resolveRuntimeConfig(
       POST_WHEN_NO_EVENTS_FIELD.envName,
       POST_WHEN_NO_EVENTS_FIELD.configKey,
       source
+    ) ?? false,
+    includeLocationAddress: getBooleanConfigValue(
+      INCLUDE_LOCATION_ADDRESS_FIELD.envName,
+      INCLUDE_LOCATION_ADDRESS_FIELD.configKey,
+      source
     ) ?? false
   };
   if (messageTemplatePath) {
@@ -171,7 +193,7 @@ export function resolveRuntimeConfig(
 
 export function getBooleanConfigValue(
   envName: string,
-  configKey: "postWhenNoEvents",
+  configKey: BooleanConfigKey,
   source: ConfigSource
 ): boolean | undefined {
   const envValue = normalizeOptionalBooleanString(source.env?.[envName], envName);
@@ -187,7 +209,7 @@ export function getBooleanConfigValue(
  */
 export function getRequiredConfigValue(
   envName: string,
-  configKey: keyof AppConfig,
+  configKey: StringConfigKey,
   source: ConfigSource
 ): string {
   const value = getConfigValue(envName, configKey, source);
