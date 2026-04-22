@@ -8,6 +8,16 @@ export type AppConfig = {
   messageTemplatePath?: string;
   postWhenNoEvents?: boolean;
   includeLocationAddress?: boolean;
+  notifications?: AppNotificationConfig[];
+};
+
+export type AppNotificationConfig = {
+  id?: string;
+  calendarId?: string;
+  webhookUrls?: string[];
+  messageTemplatePath?: string;
+  postWhenNoEvents?: boolean;
+  includeLocationAddress?: boolean;
 };
 
 export type ConfigSource = {
@@ -21,9 +31,17 @@ export type ServiceAccountCredentials = {
 };
 
 export type RuntimeConfig = {
-  googleCalendarId: string;
-  discordWebhookUrl: string;
   googleServiceAccount: ServiceAccountCredentials;
+  messageTemplatePath?: string;
+  postWhenNoEvents: boolean;
+  includeLocationAddress: boolean;
+  routes: NotificationRoute[];
+};
+
+export type NotificationRoute = {
+  id: string;
+  calendarId: string;
+  webhookUrls: string[];
   messageTemplatePath?: string;
   postWhenNoEvents: boolean;
   includeLocationAddress: boolean;
@@ -34,7 +52,11 @@ type ConfigFieldDefinition = {
   configKey: StringConfigKey;
 };
 
-type StringConfigKey = Exclude<keyof AppConfig, BooleanConfigKey>;
+type StringConfigKey =
+  | "googleCalendarId"
+  | "discordWebhookUrl"
+  | "googleServiceAccountPath"
+  | "messageTemplatePath";
 type BooleanConfigKey = "postWhenNoEvents" | "includeLocationAddress";
 
 export const POST_WHEN_NO_EVENTS_FIELD = {
@@ -65,6 +87,8 @@ export const CONFIG_FIELDS = {
     configKey: "messageTemplatePath"
   }
 } as const satisfies Record<StringConfigKey, ConfigFieldDefinition>;
+
+export const AGENDA_NOTIFICATIONS_JSON_ENV = "AGENDA_NOTIFICATIONS_JSON";
 
 /**
  * config.json を読み込む。
@@ -123,6 +147,10 @@ export function validateAppConfig(raw: unknown, name = "config.json"): AppConfig
   if (includeLocationAddress !== undefined) {
     config.includeLocationAddress = includeLocationAddress;
   }
+  const notifications = normalizeOptionalNotifications(raw.notifications, "config.notifications");
+  if (notifications !== undefined) {
+    config.notifications = notifications;
+  }
   return config;
 }
 
@@ -148,19 +176,6 @@ export function resolveRuntimeConfig(
   fileSystem: Pick<typeof fs, "readFileSync"> = fs,
   cwd = process.cwd()
 ): RuntimeConfig {
-  const googleCalendarId = getRequiredConfigValue(
-    CONFIG_FIELDS.googleCalendarId.envName,
-    CONFIG_FIELDS.googleCalendarId.configKey,
-    source
-  );
-  const discordWebhookUrl = validateUrl(
-    getRequiredConfigValue(
-      CONFIG_FIELDS.discordWebhookUrl.envName,
-      CONFIG_FIELDS.discordWebhookUrl.configKey,
-      source
-    ),
-    CONFIG_FIELDS.discordWebhookUrl.envName
-  );
   const googleServiceAccount = validateServiceAccountJson(
     getServiceAccountJson(source, fileSystem, cwd)
   );
@@ -170,25 +185,77 @@ export function resolveRuntimeConfig(
     source
   );
 
+  const postWhenNoEvents = getBooleanConfigValue(
+    POST_WHEN_NO_EVENTS_FIELD.envName,
+    POST_WHEN_NO_EVENTS_FIELD.configKey,
+    source
+  ) ?? false;
+  const includeLocationAddress = getBooleanConfigValue(
+    INCLUDE_LOCATION_ADDRESS_FIELD.envName,
+    INCLUDE_LOCATION_ADDRESS_FIELD.configKey,
+    source
+  ) ?? false;
   const runtimeConfig: RuntimeConfig = {
-    googleCalendarId,
-    discordWebhookUrl,
     googleServiceAccount,
-    postWhenNoEvents: getBooleanConfigValue(
-      POST_WHEN_NO_EVENTS_FIELD.envName,
-      POST_WHEN_NO_EVENTS_FIELD.configKey,
-      source
-    ) ?? false,
-    includeLocationAddress: getBooleanConfigValue(
-      INCLUDE_LOCATION_ADDRESS_FIELD.envName,
-      INCLUDE_LOCATION_ADDRESS_FIELD.configKey,
-      source
-    ) ?? false
+    postWhenNoEvents,
+    includeLocationAddress,
+    routes: resolveNotificationRoutes(source, {
+      postWhenNoEvents,
+      includeLocationAddress
+    })
   };
   if (messageTemplatePath) {
     runtimeConfig.messageTemplatePath = messageTemplatePath;
   }
   return runtimeConfig;
+}
+
+export function resolveNotificationRoutes(
+  source: ConfigSource,
+  defaults: Pick<RuntimeConfig, "postWhenNoEvents" | "includeLocationAddress">
+): NotificationRoute[] {
+  const envNotifications = normalizeOptionalString(
+    source.env?.[AGENDA_NOTIFICATIONS_JSON_ENV],
+    AGENDA_NOTIFICATIONS_JSON_ENV
+  );
+
+  if (envNotifications) {
+    return toRuntimeNotificationRoutes(
+      normalizeNotifications(
+        parseJsonArray(envNotifications, AGENDA_NOTIFICATIONS_JSON_ENV),
+        AGENDA_NOTIFICATIONS_JSON_ENV
+      ),
+      defaults,
+      AGENDA_NOTIFICATIONS_JSON_ENV
+    );
+  }
+
+  if (source.config?.notifications) {
+    return toRuntimeNotificationRoutes(source.config.notifications, defaults, "config.notifications");
+  }
+
+  return [
+    {
+      id: "default",
+      calendarId: getRequiredConfigValue(
+        CONFIG_FIELDS.googleCalendarId.envName,
+        CONFIG_FIELDS.googleCalendarId.configKey,
+        source
+      ),
+      webhookUrls: [
+        validateUrl(
+          getRequiredConfigValue(
+            CONFIG_FIELDS.discordWebhookUrl.envName,
+            CONFIG_FIELDS.discordWebhookUrl.configKey,
+            source
+          ),
+          CONFIG_FIELDS.discordWebhookUrl.envName
+        )
+      ],
+      postWhenNoEvents: defaults.postWhenNoEvents,
+      includeLocationAddress: defaults.includeLocationAddress
+    }
+  ];
 }
 
 export function getBooleanConfigValue(
@@ -280,7 +347,23 @@ export function isJsonString(value: string): boolean {
 
 export function parseJson(raw: string, name: string): Record<string, unknown> {
   try {
-    return JSON.parse(raw) as Record<string, unknown>;
+    const parsed = JSON.parse(raw) as unknown;
+    if (!isRecord(parsed)) {
+      throw new Error(`${name} は JSON object である必要があります。`);
+    }
+    return parsed;
+  } catch (error) {
+    throw new Error(`${name} の JSON 解析に失敗しました: ${error}`);
+  }
+}
+
+export function parseJsonArray(raw: string, name: string): unknown[] {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) {
+      throw new Error(`${name} は JSON array である必要があります。`);
+    }
+    return parsed;
   } catch (error) {
     throw new Error(`${name} の JSON 解析に失敗しました: ${error}`);
   }
@@ -337,6 +420,119 @@ function normalizeOptionalBooleanString(value: unknown, name: string): boolean |
     return false;
   }
   throw new Error(`${name} は true/false の値である必要があります。`);
+}
+
+function normalizeOptionalNotifications(
+  value: unknown,
+  name: string
+): AppNotificationConfig[] | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  return normalizeNotifications(value, name);
+}
+
+function normalizeNotifications(value: unknown, name: string): AppNotificationConfig[] {
+  if (!Array.isArray(value)) {
+    throw new Error(`${name} は配列である必要があります。`);
+  }
+  return value.map((rawRoute, index) => normalizeNotification(rawRoute, `${name}[${index}]`));
+}
+
+function normalizeNotification(value: unknown, name: string): AppNotificationConfig {
+  if (!isRecord(value)) {
+    throw new Error(`${name} は JSON object である必要があります。`);
+  }
+
+  const route: AppNotificationConfig = {};
+  const id = normalizeOptionalString(value.id, `${name}.id`);
+  if (id !== undefined) {
+    route.id = id;
+  }
+  const calendarId = normalizeOptionalString(value.calendarId, `${name}.calendarId`);
+  if (calendarId !== undefined) {
+    route.calendarId = calendarId;
+  }
+  const webhookUrls = normalizeOptionalStringArray(value.webhookUrls, `${name}.webhookUrls`);
+  if (webhookUrls !== undefined) {
+    route.webhookUrls = webhookUrls;
+  }
+  const messageTemplatePath = normalizeOptionalString(
+    value.messageTemplatePath,
+    `${name}.messageTemplatePath`
+  );
+  if (messageTemplatePath !== undefined) {
+    route.messageTemplatePath = messageTemplatePath;
+  }
+  const postWhenNoEvents = normalizeOptionalBoolean(
+    value.postWhenNoEvents,
+    `${name}.postWhenNoEvents`
+  );
+  if (postWhenNoEvents !== undefined) {
+    route.postWhenNoEvents = postWhenNoEvents;
+  }
+  const includeLocationAddress = normalizeOptionalBoolean(
+    value.includeLocationAddress,
+    `${name}.includeLocationAddress`
+  );
+  if (includeLocationAddress !== undefined) {
+    route.includeLocationAddress = includeLocationAddress;
+  }
+
+  return route;
+}
+
+function normalizeOptionalStringArray(value: unknown, name: string): string[] | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (!Array.isArray(value)) {
+    throw new Error(`${name} は配列である必要があります。`);
+  }
+
+  const strings = value.map((item, index) => normalizeOptionalString(item, `${name}[${index}]`));
+  const nonEmpty = strings.filter((item): item is string => item !== undefined);
+  return nonEmpty.length > 0 ? nonEmpty : undefined;
+}
+
+function toRuntimeNotificationRoutes(
+  routes: AppNotificationConfig[],
+  defaults: Pick<RuntimeConfig, "postWhenNoEvents" | "includeLocationAddress">,
+  name: string
+): NotificationRoute[] {
+  if (routes.length === 0) {
+    throw new Error(`${name} には 1 件以上の通知設定が必要です。`);
+  }
+
+  const ids = new Set<string>();
+  return routes.map((route, index) => {
+    const name = route.id ?? `route-${index + 1}`;
+    if (ids.has(name)) {
+      throw new Error(`通知設定 id が重複しています: ${name}`);
+    }
+    ids.add(name);
+
+    if (!route.calendarId) {
+      throw new Error(`通知設定 ${name} に calendarId がありません。`);
+    }
+    if (!route.webhookUrls || route.webhookUrls.length === 0) {
+      throw new Error(`通知設定 ${name} に webhookUrls がありません。`);
+    }
+
+    const runtimeRoute: NotificationRoute = {
+      id: name,
+      calendarId: route.calendarId,
+      webhookUrls: route.webhookUrls.map((url, urlIndex) =>
+        validateUrl(url, `${name}.webhookUrls[${urlIndex}]`)
+      ),
+      postWhenNoEvents: route.postWhenNoEvents ?? defaults.postWhenNoEvents,
+      includeLocationAddress: route.includeLocationAddress ?? defaults.includeLocationAddress
+    };
+    if (route.messageTemplatePath) {
+      runtimeRoute.messageTemplatePath = route.messageTemplatePath;
+    }
+    return runtimeRoute;
+  });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

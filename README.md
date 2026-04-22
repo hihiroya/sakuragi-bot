@@ -10,6 +10,7 @@ Google Calendar の当日予定を Discord webhook へ投稿する bot です。
 | --- | --- | --- |
 | `GOOGLE_CALENDAR_ID` | `googleCalendarId` | 投稿対象の Google Calendar ID |
 | `DISCORD_WEBHOOK_URL` | `discordWebhookUrl` | 投稿先の Discord webhook URL |
+| `AGENDA_NOTIFICATIONS_JSON` | `notifications` | 複数カレンダー・複数 webhook の通知設定 JSON |
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | - | Google サービスアカウント JSON の文字列 |
 | `GOOGLE_SERVICE_ACCOUNT_PATH` | `googleServiceAccountPath` | Google サービスアカウント JSON ファイルのパス |
 | `MESSAGE_TEMPLATE_PATH` | `messageTemplatePath` | 投稿文テンプレート JSON ファイルのパス |
@@ -17,10 +18,61 @@ Google Calendar の当日予定を Discord webhook へ投稿する bot です。
 | `INCLUDE_LOCATION_ADDRESS` | `includeLocationAddress` | 場所に含まれる日本の住所も Discord へ投稿するか |
 
 `GOOGLE_SERVICE_ACCOUNT_JSON` が JSON 文字列として設定されている場合は、ファイルパスより優先されます。
+`AGENDA_NOTIFICATIONS_JSON` が設定されている場合は、複数通知設定として `GOOGLE_CALENDAR_ID` / `DISCORD_WEBHOOK_URL` より優先されます。未設定の場合は従来どおり `GOOGLE_CALENDAR_ID` と `DISCORD_WEBHOOK_URL` から 1 件の通知設定を作ります。
 `config.json` は JSON object として読み込み、既知の設定キーは文字列であることを検証します。前後の空白は取り除き、空白だけの値は未設定として扱います。未知のキーは無視されます。
 `MESSAGE_TEMPLATE_PATH` が未設定の場合は、リポジトリ直下の `message-template.json` を読み込みます。テンプレートファイルがない、または読み込みに失敗した場合は既定文言で投稿します。
-`postWhenNoEvents` のデフォルトは `false` です。予定がない日は投稿せず、ログに `Skipped: YYYY-MM-DD (0 events)` を出します。予定なしの日も投稿したい場合は `config.json` で `true`、または環境変数 `POST_WHEN_NO_EVENTS=true` を設定してください。
+`postWhenNoEvents` のデフォルトは `false` です。予定がない日は投稿せず、ログに `Skipped: default YYYY-MM-DD (0 events)` のように通知設定名つきで出します。予定なしの日も投稿したい場合は `config.json` で `true`、または環境変数 `POST_WHEN_NO_EVENTS=true` を設定してください。
 `includeLocationAddress` のデフォルトは `false` です。Google Calendar の場所が `施設名, 日本、〒170-0013 東京都...` のような形式の場合、既定では住所部分を除いて施設名だけを投稿します。住所も投稿したい場合は `config.json` で `true`、または環境変数 `INCLUDE_LOCATION_ADDRESS=true` を設定してください。
+
+## 複数カレンダー・複数 webhook
+
+公開リポジトリで GitHub Actions 運用する場合は、カレンダー ID と Discord webhook URL を `AGENDA_NOTIFICATIONS_JSON` の Repository secret にまとめて登録する方法を推奨します。ソースや `config.json` に実値を置かずに複数通知を管理できます。
+
+`AGENDA_NOTIFICATIONS_JSON` は JSON array です。
+
+```json
+[
+  {
+    "id": "team-a",
+    "calendarId": "team-a-calendar.example",
+    "webhookUrls": [
+      "https://example.com/discord-webhook/team-a"
+    ]
+  }
+]
+```
+
+route ごとの上書き設定を含む例は `config.sample.json` を参照してください。
+
+各通知設定の項目は以下です。
+
+| キー | 必須 | 説明 |
+| --- | --- | --- |
+| `id` | 任意 | ログに出す通知設定名。未指定の場合は `route-1` 形式で補完します。 |
+| `calendarId` | 必須 | 予定を取得する Google Calendar ID |
+| `webhookUrls` | 必須 | 投稿先 Discord webhook URL の配列。1 カレンダーを複数 Discord へ通知できます。 |
+| `messageTemplatePath` | 任意 | この通知設定だけで使う投稿文テンプレート。未指定なら全体設定を使います。 |
+| `postWhenNoEvents` | 任意 | この通知設定だけで予定なし投稿の有無を上書きします。 |
+| `includeLocationAddress` | 任意 | この通知設定だけで住所表示の有無を上書きします。 |
+
+同じ `calendarId` を複数の通知設定で使う場合でも、Google Calendar API からの予定取得は実行内で 1 回にまとめます。Discord webhook への投稿は webhook ごとに行い、一部 webhook で失敗しても他の webhook への投稿は継続します。失敗が 1 件でもあれば最後に GitHub Actions の job は失敗します。
+
+ローカル検証用には `config.json` の `notifications` に同じ配列を置けます。ただし公開リポジトリでは本物の `calendarId` や `webhookUrls` をコミットしないでください。
+
+## セキュリティとプライバシー
+
+公開リポジトリでは、実際の Google Calendar ID、Discord webhook URL、サービスアカウント JSON をコミットしないでください。GitHub Actions では Repository secrets に登録して運用します。
+
+この bot は Google Calendar の予定名、日時、場所、説明文、誕生日予定を Discord に投稿できます。投稿先チャンネルの閲覧権限を確認し、個人情報・住所・社外秘情報などを含む予定を通知対象にする場合は、組織のルールに従ってください。
+
+サービスアカウントは通知対象のカレンダーだけに共有し、不要になったキーやカレンダー共有は削除してください。
+
+公開前に以下を確認してください。
+
+- `config.json`、サービスアカウント JSON、実際の webhook URL を含むファイルが commit 対象に入っていないこと
+- Repository secrets に登録する値へ不要なカレンダーや webhook が含まれていないこと
+- 投稿先 Discord チャンネルの閲覧者が、通知される予定情報を見てよい範囲に限られていること
+- 初回の GitHub Actions 手動実行では `dry_run=true` のままログを確認し、問題がなければ `dry_run=false` で投稿すること
 
 ## 投稿文テンプレート
 
@@ -116,6 +168,9 @@ Google Calendar API はサービスアカウントで読み取ります。運用
 | --- | --- | --- |
 | `Missing configuration: GOOGLE_CALENDAR_ID or config.googleCalendarId` | カレンダー ID が未設定 | `GOOGLE_CALENDAR_ID` secret または `config.json` を設定します。 |
 | `Missing configuration: DISCORD_WEBHOOK_URL or config.discordWebhookUrl` | Discord webhook URL が未設定 | `DISCORD_WEBHOOK_URL` secret または `config.json` を設定します。 |
+| `AGENDA_NOTIFICATIONS_JSON の JSON 解析に失敗しました` | 複数通知設定の JSON が壊れている | Repository secret の JSON array 形式を確認します。 |
+| `通知設定 ... に calendarId がありません` | 複数通知設定にカレンダー ID がない | 対象 route に `calendarId` を設定します。 |
+| `通知設定 ... に webhookUrls がありません` | 複数通知設定に webhook URL がない | 対象 route に `webhookUrls` 配列を設定します。 |
 | `DISCORD_WEBHOOK_URL の形式が不正です` | URL 形式ではない、または http/https 以外 | Discord の webhook URL を設定し直します。 |
 | `GOOGLE_SERVICE_ACCOUNT_JSON または GOOGLE_SERVICE_ACCOUNT_PATH` | サービスアカウント JSON が未設定 | GitHub Actions では `GOOGLE_SERVICE_ACCOUNT_JSON` secret を設定します。 |
 | `GOOGLE_SERVICE_ACCOUNT_JSON に client_email がありません` | JSON が壊れている、または別形式 | Google Cloud から発行したサービスアカウント JSON 全体を登録します。 |
@@ -188,11 +243,13 @@ GitHub Actions で運用する場合は、リポジトリの `Settings` -> `Secr
 | Secret | 必須 | 説明 |
 | --- | --- | --- |
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | 必須 | Google サービスアカウント JSON 全体 |
-| `GOOGLE_CALENDAR_ID` | 必須 | 予定を取得する Google Calendar ID |
-| `DISCORD_WEBHOOK_URL` | 必須 | 通常投稿先の Discord webhook URL |
+| `GOOGLE_CALENDAR_ID` | 単一通知時は必須 | 予定を取得する Google Calendar ID |
+| `DISCORD_WEBHOOK_URL` | 単一通知時は必須 | 通常投稿先の Discord webhook URL |
+| `AGENDA_NOTIFICATIONS_JSON` | 複数通知時は必須 | 複数カレンダー・複数 webhook の通知設定 JSON array |
 | `FAILURE_DISCORD_WEBHOOK_URL` | 任意 | GitHub Actions 失敗通知先の Discord webhook URL |
 
 `FAILURE_DISCORD_WEBHOOK_URL` が未設定の場合、失敗通知ステップはスキップされます。通常投稿そのものには影響しません。
+`AGENDA_NOTIFICATIONS_JSON` を設定した場合は、`GOOGLE_CALENDAR_ID` と `DISCORD_WEBHOOK_URL` より優先されます。既存の単一通知運用では `AGENDA_NOTIFICATIONS_JSON` を未設定のまま使えます。
 
 `.github/workflows/ci.yml` では pull request と `main` への push で以下を実行します。
 
@@ -213,4 +270,4 @@ npm run coverage:summary
 | `date` | 取得対象日。未指定の場合は実行日の JST 当日。形式は `YYYY-MM-DD`。 |
 | `dry_run` | Discord へ投稿せず、生成本文をログで確認します。手動実行時の既定値は `true` です。 |
 
-手動実行で実際に Discord へ投稿したい場合は、`dry_run` を `false` にしてください。
+初回や設定変更後の手動実行では、まず `dry_run` を `true` のまま実行してログを確認してください。実際に Discord へ投稿したい場合は、確認後に `dry_run` を `false` にしてください。

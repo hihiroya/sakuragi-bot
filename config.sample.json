@@ -1,8 +1,28 @@
 {
-  "googleCalendarId": "your-calendar-id@group.calendar.google.com",
-  "discordWebhookUrl": "https://discord.com/api/webhooks/your/webhook/url",
+  "googleCalendarId": "calendar-id.example",
+  "discordWebhookUrl": "https://example.com/discord-webhook/default",
   "googleServiceAccountPath": "./service-account.json",
   "messageTemplatePath": "./message-template.json",
   "postWhenNoEvents": false,
-  "includeLocationAddress": false
+  "includeLocationAddress": false,
+  "notifications": [
+    {
+      "id": "team-a",
+      "calendarId": "team-a-calendar.example",
+      "webhookUrls": [
+        "https://example.com/discord-webhook/team-a-1",
+        "https://example.com/discord-webhook/team-a-2"
+      ]
+    },
+    {
+      "id": "team-b",
+      "calendarId": "team-b-calendar.example",
+      "webhookUrls": [
+        "https://example.com/discord-webhook/team-b"
+      ],
+      "messageTemplatePath": "./message-template.json",
+      "postWhenNoEvents": true,
+      "includeLocationAddress": true
+    }
+  ]
 }

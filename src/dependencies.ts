@@ -25,7 +25,7 @@ export type DailyAgendaDependencies = {
   createCalendarClient?: (credentials: RuntimeConfig["googleServiceAccount"]) => CalendarClient;
   listEventsFn?: (calendar: CalendarClient, calendarId: string, range: TodayRange) => Promise<AgendaEvent[]>;
   createDiscordClientFn?: (
-    config: Pick<RuntimeConfig, "discordWebhookUrl">,
+    config: { discordWebhookUrl: string },
     logger: PostLogger
   ) => DiscordClient;
   getTodayRangeFn?: (date?: string) => TodayRange;

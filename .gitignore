@@ -73,6 +73,9 @@ web_modules/
 # Google service account credentials
 service-account*.json
 *service-account*.json
+google-credentials*.json
+*google-credentials*.json
+credentials*.json
 
 # Local runtime config may contain webhook URLs or calendar IDs
 config.json

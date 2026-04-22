@@ -55,6 +55,7 @@ jobs:
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           GOOGLE_CALENDAR_ID: ${{ secrets.GOOGLE_CALENDAR_ID }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          AGENDA_NOTIFICATIONS_JSON: ${{ secrets.AGENDA_NOTIFICATIONS_JSON }}
 
       - name: Notify Discord on failure
         if: ${{ failure() && env.FAILURE_DISCORD_WEBHOOK_URL != '' }}

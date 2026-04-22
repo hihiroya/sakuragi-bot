@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  AGENDA_NOTIFICATIONS_JSON_ENV,
   getBooleanConfigValue,
   getConfigValue,
   getRequiredConfigValue,
@@ -7,6 +8,7 @@ import {
   isJsonString,
   loadConfig,
   parseJson,
+  resolveNotificationRoutes,
   resolveRuntimeConfig,
   validateAppConfig,
   validateServiceAccountJson,
@@ -33,6 +35,14 @@ describe("loadConfig", () => {
         messageTemplatePath: " ./message-template.json ",
         postWhenNoEvents: true,
         includeLocationAddress: true,
+        notifications: [
+          {
+            id: " team-a ",
+            calendarId: " calendar-a ",
+            webhookUrls: [" https://example.com/webhook-a "],
+            postWhenNoEvents: false
+          }
+        ],
         memo: "unknown keys are ignored"
       }))
     };
@@ -42,7 +52,15 @@ describe("loadConfig", () => {
       discordWebhookUrl: "https://example.com/hook",
       messageTemplatePath: "./message-template.json",
       postWhenNoEvents: true,
-      includeLocationAddress: true
+      includeLocationAddress: true,
+      notifications: [
+        {
+          id: "team-a",
+          calendarId: "calendar-a",
+          webhookUrls: ["https://example.com/webhook-a"],
+          postWhenNoEvents: false
+        }
+      ]
     });
   });
 
@@ -67,6 +85,14 @@ describe("validateAppConfig", () => {
       messageTemplatePath: " ./message-template.json ",
       postWhenNoEvents: true,
       includeLocationAddress: true,
+      notifications: [
+        {
+          id: " team-a ",
+          calendarId: " calendar-a ",
+          webhookUrls: [" https://example.com/webhook-a ", "   "],
+          includeLocationAddress: false
+        }
+      ],
       unknownKey: "ignored"
     })).toEqual({
       googleCalendarId: "calendar-id",
@@ -74,7 +100,15 @@ describe("validateAppConfig", () => {
       googleServiceAccountPath: "./service-account.json",
       messageTemplatePath: "./message-template.json",
       postWhenNoEvents: true,
-      includeLocationAddress: true
+      includeLocationAddress: true,
+      notifications: [
+        {
+          id: "team-a",
+          calendarId: "calendar-a",
+          webhookUrls: ["https://example.com/webhook-a"],
+          includeLocationAddress: false
+        }
+      ]
     });
   });
 
@@ -106,6 +140,23 @@ describe("validateAppConfig", () => {
     expect(() => validateAppConfig({
       includeLocationAddress: "true"
     })).toThrow("config.includeLocationAddress は boolean である必要があります。");
+  });
+
+  it("notifications が配列ではない場合はエラーを投げる", () => {
+    expect(() => validateAppConfig({
+      notifications: {}
+    })).toThrow("config.notifications は配列である必要があります。");
+  });
+
+  it("notification の webhookUrls が配列ではない場合はエラーを投げる", () => {
+    expect(() => validateAppConfig({
+      notifications: [
+        {
+          calendarId: "calendar-a",
+          webhookUrls: "https://example.com/webhook-a"
+        }
+      ]
+    })).toThrow("config.notifications[0].webhookUrls は配列である必要があります。");
   });
 });
 
@@ -250,15 +301,22 @@ describe("resolveRuntimeConfig", () => {
       },
       config: {}
     })).toEqual({
-      googleCalendarId: "calendar-id",
-      discordWebhookUrl: "https://discord.com/api/webhooks/test",
       googleServiceAccount: {
         clientEmail: "bot@example.com",
         privateKey: "secret"
       },
       messageTemplatePath: "./message-template.json",
       postWhenNoEvents: true,
-      includeLocationAddress: true
+      includeLocationAddress: true,
+      routes: [
+        {
+          id: "default",
+          calendarId: "calendar-id",
+          webhookUrls: ["https://discord.com/api/webhooks/test"],
+          postWhenNoEvents: true,
+          includeLocationAddress: true
+        }
+      ]
     });
   });
 
@@ -277,6 +335,109 @@ describe("resolveRuntimeConfig", () => {
 
     expect(config.postWhenNoEvents).toBe(false);
     expect(config.includeLocationAddress).toBe(false);
+  });
+
+  it("AGENDA_NOTIFICATIONS_JSON がある場合は複数通知設定として優先する", () => {
+    const config = resolveRuntimeConfig({
+      env: {
+        GOOGLE_SERVICE_ACCOUNT_JSON: JSON.stringify({
+          client_email: "bot@example.com",
+          private_key: "secret"
+        }),
+        GOOGLE_CALENDAR_ID: "legacy-calendar",
+        DISCORD_WEBHOOK_URL: "https://discord.com/api/webhooks/legacy",
+        [AGENDA_NOTIFICATIONS_JSON_ENV]: JSON.stringify([
+          {
+            id: "team-a",
+            calendarId: "calendar-a",
+            webhookUrls: [
+              "https://discord.com/api/webhooks/a/1",
+              "https://discord.com/api/webhooks/a/2"
+            ],
+            includeLocationAddress: true
+          },
+          {
+            calendarId: "calendar-b",
+            webhookUrls: ["https://discord.com/api/webhooks/b/1"],
+            postWhenNoEvents: true
+          }
+        ])
+      },
+      config: {
+        notifications: [
+          {
+            id: "config-route",
+            calendarId: "config-calendar",
+            webhookUrls: ["https://discord.com/api/webhooks/config"]
+          }
+        ]
+      }
+    });
+
+    expect(config.routes).toEqual([
+      {
+        id: "team-a",
+        calendarId: "calendar-a",
+        webhookUrls: [
+          "https://discord.com/api/webhooks/a/1",
+          "https://discord.com/api/webhooks/a/2"
+        ],
+        postWhenNoEvents: false,
+        includeLocationAddress: true
+      },
+      {
+        id: "route-2",
+        calendarId: "calendar-b",
+        webhookUrls: ["https://discord.com/api/webhooks/b/1"],
+        postWhenNoEvents: true,
+        includeLocationAddress: false
+      }
+    ]);
+  });
+
+  it("config.notifications から複数通知設定を解決する", () => {
+    expect(resolveNotificationRoutes({
+      env: {},
+      config: {
+        notifications: [
+          {
+            id: "team-a",
+            calendarId: "calendar-a",
+            webhookUrls: ["https://discord.com/api/webhooks/a/1"],
+            messageTemplatePath: "./team-a-template.json"
+          }
+        ]
+      }
+    }, {
+      postWhenNoEvents: true,
+      includeLocationAddress: false
+    })).toEqual([
+      {
+        id: "team-a",
+        calendarId: "calendar-a",
+        webhookUrls: ["https://discord.com/api/webhooks/a/1"],
+        messageTemplatePath: "./team-a-template.json",
+        postWhenNoEvents: true,
+        includeLocationAddress: false
+      }
+    ]);
+  });
+
+  it("複数通知設定の必須値がない場合はエラーを投げる", () => {
+    expect(() => resolveNotificationRoutes({
+      env: {
+        [AGENDA_NOTIFICATIONS_JSON_ENV]: JSON.stringify([
+          {
+            id: "team-a",
+            webhookUrls: ["https://discord.com/api/webhooks/a/1"]
+          }
+        ])
+      },
+      config: {}
+    }, {
+      postWhenNoEvents: false,
+      includeLocationAddress: false
+    })).toThrow("通知設定 team-a に calendarId がありません。");
   });
 });
 
