@@ -60,6 +60,17 @@ describe("validateMessageTemplate", () => {
     });
   });
 
+  it("複数行表示用テンプレートの全角スペースインデントは保持する", () => {
+    expect(validateMessageTemplate({
+      expandedProgressLine: "　⏳ {{dayIndex}}日目",
+      expandedLocationLine: " 　📍 {{location}} "
+    })).toEqual({
+      ...DEFAULT_MESSAGE_TEMPLATE,
+      expandedProgressLine: "　⏳ {{dayIndex}}日目",
+      expandedLocationLine: "　📍 {{location}}"
+    });
+  });
+
   it("テンプレートが object ではない場合はエラーを投げる", () => {
     expect(() => validateMessageTemplate([], "message-template.json"))
       .toThrow("message-template.json は JSON object である必要があります。");

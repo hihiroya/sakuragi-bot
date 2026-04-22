@@ -214,6 +214,26 @@ describe("buildMessage", () => {
     ].join("\n"));
   });
 
+  it("外部テンプレート読み込み後も詳細表示のインデントを保持する", () => {
+    const message = buildMessage([{
+      title: "アニメイトカフェコラボ",
+      startDate: "2026-04-03",
+      endDate: "2026-04-27",
+      isBirthday: false
+    }], "2026-04-22", {
+      ...DEFAULT_MESSAGE_TEMPLATE,
+      expandedAllDayEventTitleLine: "・⭐ {{title}}（〜4/26）",
+      expandedProgressLine: "　⏳ {{dayIndex}}日目 / 全{{totalDays}}日（残り{{remainingDays}}日）",
+      expandedDateRangeLine: "　📅 {{dateRange}}"
+    });
+
+    expect(message).toContain([
+      "・⭐ アニメイトカフェコラボ（〜4/26）",
+      "　⏳ 20日目 / 全24日（残り5日）",
+      "　📅 4/3〜4/26"
+    ].join("\n"));
+  });
+
   it("通常予定が複数件ある場合は複数日終日予定を1行表示する", () => {
     const message = buildMessage([
       {
