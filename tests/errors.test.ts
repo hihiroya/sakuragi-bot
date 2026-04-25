@@ -3,7 +3,8 @@ import {
   classifyDiscordWebhookError,
   classifyGoogleApiError,
   logDiscordWebhookError,
-  logGoogleApiError
+  logGoogleApiError,
+  redactSecrets
 } from "../src/errors.js";
 
 function createLogger() {
@@ -238,5 +239,31 @@ describe("logDiscordWebhookError", () => {
         details: "temporary failure"
       })
     );
+  });
+});
+
+describe("redactSecrets", () => {
+  it("Discord webhook URL と秘密鍵を文字列から伏せる", () => {
+    expect(redactSecrets(
+      "post https://discord.com/api/webhooks/id/token and -----BEGIN PRIVATE KEY-----\nsecret\n-----END PRIVATE KEY-----"
+    )).toBe("post [REDACTED] and [REDACTED]");
+  });
+
+  it("機微なキーの値を再帰的に伏せる", () => {
+    expect(redactSecrets({
+      message: "failed",
+      webhookUrl: "https://discord.com/api/webhooks/id/token",
+      nested: {
+        access_token: "secret-token",
+        safe: "visible"
+      }
+    })).toEqual({
+      message: "failed",
+      webhookUrl: "[REDACTED]",
+      nested: {
+        access_token: "[REDACTED]",
+        safe: "visible"
+      }
+    });
   });
 });

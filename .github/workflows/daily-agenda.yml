@@ -19,22 +19,26 @@ on:
 permissions:
   contents: read
 
+env:
+  NPM_CONFIG_IGNORE_SCRIPTS: "true"
+
 jobs:
   run:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    env:
-      FAILURE_DISCORD_WEBHOOK_URL: ${{ secrets.FAILURE_DISCORD_WEBHOOK_URL }}
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@v6
         with:
           node-version: "24"
           cache: "npm"
 
-      - run: npm ci
+      - run: node scripts/check-lockfile.mjs
+      - run: npm ci --ignore-scripts --no-audit
       - run: npm run build
 
       - name: Run daily agenda
@@ -58,7 +62,16 @@ jobs:
           AGENDA_NOTIFICATIONS_JSON: ${{ secrets.AGENDA_NOTIFICATIONS_JSON }}
 
       - name: Notify Discord on failure
-        if: ${{ failure() && env.FAILURE_DISCORD_WEBHOOK_URL != '' }}
+        if: ${{ failure() }}
         run: |
+          if [ -z "$FAILURE_DISCORD_WEBHOOK_URL" ]; then
+            exit 0
+          fi
+          case "$FAILURE_DISCORD_WEBHOOK_URL" in
+            https://discord.com/api/webhooks/*|https://discordapp.com/api/webhooks/*) ;;
+            *) echo "FAILURE_DISCORD_WEBHOOK_URL is not a Discord webhook URL"; exit 1 ;;
+          esac
           payload='{"content":"[Daily Agenda] 実行に失敗しました。GitHub Actionsログを確認してください。"}'
           curl --fail --show-error --silent -H "Content-Type: application/json" -X POST -d "$payload" "$FAILURE_DISCORD_WEBHOOK_URL"
+        env:
+          FAILURE_DISCORD_WEBHOOK_URL: ${{ secrets.FAILURE_DISCORD_WEBHOOK_URL }}

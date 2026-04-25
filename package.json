@@ -8,6 +8,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "coverage:summary": "node scripts/coverage-summary.mjs",
+    "security:audit": "npm audit --audit-level=high",
+    "security:lockfile": "node scripts/check-lockfile.mjs",
     "start": "node dist/cli.js"
   },
   "dependencies": {

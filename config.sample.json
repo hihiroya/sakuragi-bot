@@ -1,6 +1,6 @@
 {
   "googleCalendarId": "calendar-id.example",
-  "discordWebhookUrl": "https://example.com/discord-webhook/default",
+  "discordWebhookUrl": "https://discord.com/api/webhooks/default-id/default-token",
   "googleServiceAccountPath": "./service-account.json",
   "messageTemplatePath": "./message-template.json",
   "postWhenNoEvents": false,
@@ -10,15 +10,15 @@
       "id": "team-a",
       "calendarId": "team-a-calendar.example",
       "webhookUrls": [
-        "https://example.com/discord-webhook/team-a-1",
-        "https://example.com/discord-webhook/team-a-2"
+        "https://discord.com/api/webhooks/team-a-id/team-a-token-1",
+        "https://discord.com/api/webhooks/team-a-id/team-a-token-2"
       ]
     },
     {
       "id": "team-b",
       "calendarId": "team-b-calendar.example",
       "webhookUrls": [
-        "https://example.com/discord-webhook/team-b"
+        "https://discord.com/api/webhooks/team-b-id/team-b-token"
       ],
       "messageTemplatePath": "./message-template.json",
       "postWhenNoEvents": true,

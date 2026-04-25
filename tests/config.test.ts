@@ -11,6 +11,7 @@ import {
   resolveNotificationRoutes,
   resolveRuntimeConfig,
   validateAppConfig,
+  validateDiscordWebhookUrl,
   validateServiceAccountJson,
   validateUrl
 } from "../src/config.js";
@@ -485,5 +486,24 @@ describe("JSON と URL の検証", () => {
       .toThrow("DISCORD_WEBHOOK_URL の形式が不正です");
     expect(() => validateUrl("not-a-url", "DISCORD_WEBHOOK_URL"))
       .toThrow("DISCORD_WEBHOOK_URL の形式が不正です");
+  });
+
+  it("Discord webhook は https の Discord endpoint だけ許可する", () => {
+    expect(validateDiscordWebhookUrl(
+      "https://discord.com/api/webhooks/test/token",
+      "DISCORD_WEBHOOK_URL"
+    )).toBe("https://discord.com/api/webhooks/test/token");
+    expect(validateDiscordWebhookUrl(
+      "https://discordapp.com/api/webhooks/test/token",
+      "DISCORD_WEBHOOK_URL"
+    )).toBe("https://discordapp.com/api/webhooks/test/token");
+    expect(() => validateDiscordWebhookUrl(
+      "http://discord.com/api/webhooks/test/token",
+      "DISCORD_WEBHOOK_URL"
+    )).toThrow("https の Discord webhook URL");
+    expect(() => validateDiscordWebhookUrl(
+      "https://example.com/api/webhooks/test/token",
+      "DISCORD_WEBHOOK_URL"
+    )).toThrow("Discord webhook URL");
   });
 });

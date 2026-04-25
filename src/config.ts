@@ -243,7 +243,7 @@ export function resolveNotificationRoutes(
         source
       ),
       webhookUrls: [
-        validateUrl(
+        validateDiscordWebhookUrl(
           getRequiredConfigValue(
             CONFIG_FIELDS.discordWebhookUrl.envName,
             CONFIG_FIELDS.discordWebhookUrl.configKey,
@@ -382,6 +382,25 @@ export function validateUrl(value: string, name: string): string {
   } catch (error) {
     throw new Error(`${name} の形式が不正です: ${error}`);
   }
+}
+
+/**
+ * Discord webhook secret を攻撃者の任意 URL へ投稿しないよう、投稿先を Discord の
+ * webhook endpoint に限定する。
+ */
+export function validateDiscordWebhookUrl(value: string, name: string): string {
+  const normalized = validateUrl(value, name);
+  const url = new URL(normalized);
+  const allowedHosts = new Set(["discord.com", "discordapp.com"]);
+
+  if (url.protocol !== "https:") {
+    throw new Error(`${name} は https の Discord webhook URL である必要があります。`);
+  }
+  if (!allowedHosts.has(url.hostname) || !url.pathname.startsWith("/api/webhooks/")) {
+    throw new Error(`${name} は Discord webhook URL である必要があります。`);
+  }
+
+  return normalized;
 }
 
 function normalizeOptionalString(value: unknown, name: string): string | undefined {
@@ -523,7 +542,7 @@ function toRuntimeNotificationRoutes(
       id: name,
       calendarId: route.calendarId,
       webhookUrls: route.webhookUrls.map((url, urlIndex) =>
-        validateUrl(url, `${name}.webhookUrls[${urlIndex}]`)
+        validateDiscordWebhookUrl(url, `${name}.webhookUrls[${urlIndex}]`)
       ),
       postWhenNoEvents: route.postWhenNoEvents ?? defaults.postWhenNoEvents,
       includeLocationAddress: route.includeLocationAddress ?? defaults.includeLocationAddress

@@ -23,6 +23,8 @@ export type DiscordWebhookFailure = {
   body?: unknown;
 };
 
+const REDACTED = "[REDACTED]";
+
 /**
  * Google API エラーを運用時に判断しやすいカテゴリへ変換する。
  *
@@ -51,8 +53,8 @@ export function logGoogleApiError(error: unknown, logger: ErrorLogger) {
   const info = classifyGoogleApiError(error);
   const meta = {
     status: info.status,
-    message: info.message,
-    details: info.details
+    message: redactSecrets(info.message),
+    details: redactSecrets(info.details)
   };
 
   if (info.category === "auth") {
@@ -101,10 +103,10 @@ export function logDiscordWebhookError(
 ) {
   const info = classifyDiscordWebhookError(error);
   const logMeta = {
-    ...meta,
+    ...(redactSecrets(meta) as Record<string, unknown>),
     status: info.status,
-    message: info.message,
-    details: info.details
+    message: redactSecrets(info.message),
+    details: redactSecrets(info.details)
   };
 
   if (info.category === "auth") {
@@ -125,4 +127,36 @@ function isDiscordWebhookFailure(error: unknown): error is DiscordWebhookFailure
     && error !== null
     && "status" in error
     && typeof (error as DiscordWebhookFailure).status === "number";
+}
+
+export function redactSecrets(value: unknown): unknown {
+  if (typeof value === "string") {
+    return redactSecretString(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map(item => redactSecrets(item));
+  }
+  if (typeof value === "object" && value !== null) {
+    const redacted: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(value)) {
+      redacted[key] = isSensitiveKey(key) ? REDACTED : redactSecrets(item);
+    }
+    return redacted;
+  }
+  return value;
+}
+
+function redactSecretString(value: string): string {
+  return value
+    .replace(/https:\/\/(?:discord(?:app)?\.com)\/api\/webhooks\/[^\s"'<>]+/gi, REDACTED)
+    .replace(/-----BEGIN PRIVATE KEY-----[\s\S]*?-----END PRIVATE KEY-----/g, REDACTED);
+}
+
+function isSensitiveKey(key: string): boolean {
+  const normalized = key.toLowerCase().replace(/[_-]/g, "");
+  return normalized.includes("token")
+    || normalized.includes("secret")
+    || normalized.includes("privatekey")
+    || normalized.includes("webhookurl")
+    || normalized.includes("authorization");
 }
