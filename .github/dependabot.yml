@@ -10,10 +10,15 @@ updates:
       - "github-actions"
 
   # TypeScript、Vitest、Google APIs、Winston などの npm 依存を定期更新する。
+  # cooldown は version update のみ対象。security update は遅延されない。
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      semver-major-days: 30
+      semver-minor-days: 7
+      semver-patch-days: 3
     labels:
       - "dependencies"
       - "npm"
