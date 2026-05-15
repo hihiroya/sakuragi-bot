@@ -2,6 +2,9 @@ import { google, type calendar_v3 } from "googleapis";
 import type { ServiceAccountCredentials } from "./config.js";
 import type { AgendaEvent, TodayRange } from "./domain.js";
 
+export const CALENDAR_RETRY_ATTEMPTS = 3;
+export const CALENDAR_RETRY_DELAY_MS = 1000;
+
 export type CalendarClient = {
   events: {
     list(params: calendar_v3.Params$Resource$Events$List): Promise<{
@@ -10,6 +13,12 @@ export type CalendarClient = {
       };
     }>;
   };
+};
+
+export type CalendarRetryOptions = {
+  retryAttempts?: number;
+  retryDelayMs?: number;
+  sleepFn?: (ms: number) => Promise<void>;
 };
 
 /**
@@ -37,13 +46,14 @@ export function createGoogleCalendarClient(credentials: ServiceAccountCredential
 export async function listAgendaEvents(
   calendar: CalendarClient,
   calendarId: string,
-  range: Pick<TodayRange, "timeMin" | "timeMax">
+  range: Pick<TodayRange, "timeMin" | "timeMax">,
+  retryOptions: CalendarRetryOptions = {}
 ): Promise<AgendaEvent[]> {
   const googleEvents = await listGoogleCalendarEvents(calendar, {
     calendarId,
     timeMin: range.timeMin,
     timeMax: range.timeMax
-  });
+  }, retryOptions);
 
   return googleEvents.map(toAgendaEvent);
 }
@@ -60,16 +70,33 @@ export async function listGoogleCalendarEvents(
     calendarId,
     timeMin,
     timeMax
-  }: Pick<calendar_v3.Params$Resource$Events$List, "calendarId" | "timeMin" | "timeMax">
+  }: Pick<calendar_v3.Params$Resource$Events$List, "calendarId" | "timeMin" | "timeMax">,
+  {
+    retryAttempts = CALENDAR_RETRY_ATTEMPTS,
+    retryDelayMs = CALENDAR_RETRY_DELAY_MS,
+    sleepFn = sleep
+  }: CalendarRetryOptions = {}
 ): Promise<calendar_v3.Schema$Event[]> {
-  const response = await calendar.events.list({
-    calendarId,
-    timeMin,
-    timeMax,
-    singleEvents: true,
-    orderBy: "startTime"
-  });
-  return response.data.items ?? [];
+  for (let attempt = 1; attempt <= retryAttempts; attempt += 1) {
+    try {
+      const response = await calendar.events.list({
+        calendarId,
+        timeMin,
+        timeMax,
+        singleEvents: true,
+        orderBy: "startTime"
+      });
+      return response.data.items ?? [];
+    } catch (error) {
+      if (attempt === retryAttempts || !isRetryableCalendarFailure(error)) {
+        throw error;
+      }
+
+      await sleepFn(getRetryDelayMs(error, retryDelayMs, attempt));
+    }
+  }
+
+  return [];
 }
 
 /**
@@ -139,4 +166,37 @@ function stripHtmlTags(text: string): string {
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/p>/gi, "\n")
     .replace(/<[^>]*>/g, "");
+}
+
+function isRetryableCalendarFailure(error: unknown): boolean {
+  const status = getErrorStatus(error);
+  return status === undefined || status === 429 || status >= 500;
+}
+
+function getErrorStatus(error: unknown): number | undefined {
+  const apiError = error as any;
+  const status = apiError?.response?.status ?? apiError?.code;
+  return typeof status === "number" ? status : undefined;
+}
+
+function getRetryDelayMs(error: unknown, retryDelayMs: number, attempt: number): number {
+  const retryAfter = getRetryAfterSeconds(error);
+  if (retryAfter !== undefined) {
+    return retryAfter * 1000;
+  }
+
+  return retryDelayMs * 2 ** (attempt - 1);
+}
+
+function getRetryAfterSeconds(error: unknown): number | undefined {
+  const headers = (error as any)?.response?.headers;
+  const value = typeof headers?.get === "function"
+    ? headers.get("retry-after")
+    : headers?.["retry-after"];
+  const seconds = Number(value);
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : undefined;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }

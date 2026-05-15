@@ -43,6 +43,68 @@ describe("listGoogleCalendarEvents", () => {
       timeMax: "2026-04-19T15:00:00.000Z"
     })).resolves.toEqual([]);
   });
+
+  it("一時的な Google API エラーは指数バックオフで再試行する", async () => {
+    const events = [{ summary: "朝会" }];
+    const list = vi.fn()
+      .mockRejectedValueOnce({ response: { status: 503 } })
+      .mockRejectedValueOnce({ response: { status: 429 } })
+      .mockResolvedValueOnce({ data: { items: events } });
+    const sleepFn = vi.fn(async () => undefined);
+    const calendar: CalendarClient = { events: { list } };
+
+    await expect(listGoogleCalendarEvents(calendar, {
+      calendarId: "calendar-id",
+      timeMin: "2026-04-18T15:00:00.000Z",
+      timeMax: "2026-04-19T15:00:00.000Z"
+    }, {
+      retryDelayMs: 100,
+      sleepFn
+    })).resolves.toEqual(events);
+
+    expect(list).toHaveBeenCalledTimes(3);
+    expect(sleepFn).toHaveBeenNthCalledWith(1, 100);
+    expect(sleepFn).toHaveBeenNthCalledWith(2, 200);
+  });
+
+  it("文字列 code のネットワークエラーも再試行する", async () => {
+    const events = [{ summary: "朝会" }];
+    const list = vi.fn()
+      .mockRejectedValueOnce({ code: "ECONNRESET" })
+      .mockResolvedValueOnce({ data: { items: events } });
+    const sleepFn = vi.fn(async () => undefined);
+    const calendar: CalendarClient = { events: { list } };
+
+    await expect(listGoogleCalendarEvents(calendar, {
+      calendarId: "calendar-id",
+      timeMin: "2026-04-18T15:00:00.000Z",
+      timeMax: "2026-04-19T15:00:00.000Z"
+    }, {
+      retryDelayMs: 100,
+      sleepFn
+    })).resolves.toEqual(events);
+
+    expect(list).toHaveBeenCalledTimes(2);
+    expect(sleepFn).toHaveBeenCalledWith(100);
+  });
+
+  it("認証・権限エラーは再試行しない", async () => {
+    const error = { response: { status: 403 } };
+    const list = vi.fn().mockRejectedValue(error);
+    const sleepFn = vi.fn(async () => undefined);
+    const calendar: CalendarClient = { events: { list } };
+
+    await expect(listGoogleCalendarEvents(calendar, {
+      calendarId: "calendar-id",
+      timeMin: "2026-04-18T15:00:00.000Z",
+      timeMax: "2026-04-19T15:00:00.000Z"
+    }, {
+      sleepFn
+    })).rejects.toBe(error);
+
+    expect(list).toHaveBeenCalledOnce();
+    expect(sleepFn).not.toHaveBeenCalled();
+  });
 });
 
 describe("listAgendaEvents", () => {

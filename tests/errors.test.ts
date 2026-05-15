@@ -266,4 +266,32 @@ describe("redactSecrets", () => {
       }
     });
   });
+
+  it("Google credential や Authorization を含むメタデータを再帰的に伏せる", () => {
+    expect(redactSecrets({
+      response: {
+        headers: {
+          authorization: "Bearer access-token",
+          "x-request-id": "request-id"
+        },
+        data: {
+          client_email: "bot@example.com",
+          private_key: "-----BEGIN PRIVATE KEY-----\nsecret\n-----END PRIVATE KEY-----\n",
+          safe: "visible"
+        }
+      }
+    })).toEqual({
+      response: {
+        headers: {
+          authorization: "[REDACTED]",
+          "x-request-id": "request-id"
+        },
+        data: {
+          client_email: "bot@example.com",
+          private_key: "[REDACTED]",
+          safe: "visible"
+        }
+      }
+    });
+  });
 });

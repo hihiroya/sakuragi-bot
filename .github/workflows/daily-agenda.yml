@@ -46,16 +46,22 @@ jobs:
         run: |
           args=()
 
-          if [ -n "${{ github.event.inputs.date }}" ]; then
-            args+=(--date "${{ github.event.inputs.date }}")
+          if [ -n "$INPUT_DATE" ]; then
+            if ! [[ "$INPUT_DATE" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+              echo "Invalid date format. Expected YYYY-MM-DD."
+              exit 1
+            fi
+            args+=(--date "$INPUT_DATE")
           fi
 
-          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
             args+=(--dry-run)
           fi
 
           npm start -- "${args[@]}"
         env:
+          INPUT_DATE: ${{ github.event.inputs.date }}
+          INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           GOOGLE_CALENDAR_ID: ${{ secrets.GOOGLE_CALENDAR_ID }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}

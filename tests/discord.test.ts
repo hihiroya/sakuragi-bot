@@ -26,11 +26,30 @@ describe("postToDiscord", () => {
     expect(fetchFn).toHaveBeenCalledWith("https://discord.com/api/webhooks/test", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: "おはようございます。" })
+      body: JSON.stringify({
+        content: "おはようございます。",
+        allowed_mentions: { parse: [] }
+      })
     });
     expect(logger.info).toHaveBeenCalledWith("Discord に投稿しました。", {
       length: "おはようございます。".length
     });
+  });
+
+  it("本文内の Discord mention は通知として解決させない", async () => {
+    const fetchFn = vi.fn(async () => new Response(null, { status: 204 }));
+
+    await postToDiscord("@everyone 本日の予定です。<@1234567890>", {
+      webhookUrl: "https://discord.com/api/webhooks/test",
+      fetchFn
+    });
+
+    expect(fetchFn).toHaveBeenCalledWith("https://discord.com/api/webhooks/test", expect.objectContaining({
+      body: JSON.stringify({
+        content: "@everyone 本日の予定です。<@1234567890>",
+        allowed_mentions: { parse: [] }
+      })
+    }));
   });
 
   it("429 の場合は retry-after 秒数を待って再試行する", async () => {
@@ -172,7 +191,10 @@ describe("createDiscordClient", () => {
       "https://discord.com/api/webhooks/test",
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ content: "本文" })
+        body: JSON.stringify({
+          content: "本文",
+          allowed_mentions: { parse: [] }
+        })
       })
     );
   });

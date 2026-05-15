@@ -52,6 +52,16 @@ describe("parseCliOptions", () => {
       .toThrow("--date は YYYY-MM-DD 形式の日付を指定してください。");
   });
 
+  it("--date が YYYY-MM-DD 形式でない場合はエラーを投げる", () => {
+    expect(() => parseCliOptions(["--date", "2026/04/22"]))
+      .toThrow("--date は YYYY-MM-DD 形式で指定してください。");
+  });
+
+  it("--date が実在しない日付の場合はエラーを投げる", () => {
+    expect(() => parseCliOptions(["--date=2026-02-30"]))
+      .toThrow("--date に有効な日付を指定してください。");
+  });
+
   it("未知のオプションはエラーを投げる", () => {
     expect(() => parseCliOptions(["--unknown"]))
       .toThrow("未知のオプションです: --unknown");

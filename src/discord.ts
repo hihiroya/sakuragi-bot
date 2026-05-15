@@ -60,7 +60,10 @@ export async function postToDiscord(
       response = await fetchFn(webhookUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content })
+        body: JSON.stringify({
+          content,
+          allowed_mentions: { parse: [] }
+        })
       });
     } catch (error) {
       if (logger) {

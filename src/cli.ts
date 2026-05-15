@@ -29,7 +29,7 @@ export function parseCliOptions(args: string[]): CliOptions {
       if (!value || value.startsWith("--")) {
         throw new Error("--date は YYYY-MM-DD 形式の日付を指定してください。");
       }
-      options.date = value;
+      options.date = validateDateOption(value);
       index += 1;
       continue;
     }
@@ -39,7 +39,7 @@ export function parseCliOptions(args: string[]): CliOptions {
       if (!value) {
         throw new Error("--date は YYYY-MM-DD 形式の日付を指定してください。");
       }
-      options.date = value;
+      options.date = validateDateOption(value);
       continue;
     }
 
@@ -47,6 +47,35 @@ export function parseCliOptions(args: string[]): CliOptions {
   }
 
   return options;
+}
+
+function validateDateOption(value: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new Error("--date は YYYY-MM-DD 形式で指定してください。");
+  }
+
+  const date = new Date(`${value}T00:00:00+09:00`);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error("--date に有効な日付を指定してください。");
+  }
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(date);
+  const verified = [
+    parts.find(part => part.type === "year")!.value,
+    parts.find(part => part.type === "month")!.value,
+    parts.find(part => part.type === "day")!.value
+  ].join("-");
+
+  if (verified !== value) {
+    throw new Error("--date に有効な日付を指定してください。");
+  }
+
+  return value;
 }
 
 export function isDirectExecution(importMetaUrl: string, argv = process.argv): boolean {
